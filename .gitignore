@@ -41,3 +41,11 @@ pytest_pid.txt
 test_kuzu
 count_ru.py
 .DS_Store
+
+# Agile Artifacts (Local Memory)
+TODO.md
+TASKS_DONE.md
+GEMINI.md
+docs/history.md
+docs/audit_report_tech_debt.md
+docs/architecture_stateful_planning.md
