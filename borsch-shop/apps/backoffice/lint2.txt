@@ -1,0 +1,108 @@
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/dashboard/page.tsx
+  33:28  warning  'AnalyticsData' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/documents/components/DocumentModal.tsx
+  50:14  warning  'err' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/documents/page.tsx
+  5:55  warning  'ShieldCheck' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/inventory/page.tsx
+  89:35  warning  'snapshot' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/layout.tsx
+  9:10  warning  'pb' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/menu/components/MenuCategoriesModal.tsx
+  4:48  warning  'Check' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/menu/components/MenuItemModal.tsx
+    4:30  warning  'ImageIcon' is defined but never used                                                                                                                                                                                                                                                    @typescript-eslint/no-unused-vars
+  152:28  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/menu/page.tsx
+   12:3   warning  'ListOrdered' is defined but never used                                                                                                                                                                                                                                                  @typescript-eslint/no-unused-vars
+   30:11  warning  'settings' is assigned a value but never used                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+   30:36  warning  'updateSettings' is assigned a value but never used                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+  123:11  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/orders/page.tsx
+  12:3  warning  'Users' is defined but never used  @typescript-eslint/no-unused-vars
+  14:8  warning  'Link' is defined but never used   @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/pos/page.tsx
+  195:23  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/recipes/components/RecipeEditModal.tsx
+    3:25  warning  'Recipe' is defined but never used                                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  141:6   warning  React Hook useEffect has a missing dependency: 'ingredient.quantity'. Either include it or remove the dependency array. If 'setDisplayQty' needs the current value of 'ingredient.quantity', you can also switch to useReducer instead of useState and read 'ingredient.quantity' in the reducer  react-hooks/exhaustive-deps
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/recipes/page.tsx
+  54:14  warning  'e' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/shifts/page.tsx
+   6:31  warning  'CalendarDays' is defined but never used            @typescript-eslint/no-unused-vars
+   6:45  warning  'Receipt' is defined but never used                 @typescript-eslint/no-unused-vars
+  11:30  warning  'shiftsLoading' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  29:13  warning  'err' is defined but never used                     @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/suppliers/components/SupplierDetails.tsx
+  18:84  warning  'createOrder' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/app/(protected)/suppliers/page.tsx
+  13:9  warning  'router' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/components/AiSidebar.tsx
+    1:10  warning  'MessageSquare' is defined but never used                                                                                                                                                                                                                                                @typescript-eslint/no-unused-vars
+  115:41  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  130:15  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/components/CartSheetLocal.tsx
+  5:40  warning  'useRef' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/components/StorefrontClientLocal.tsx
+    6:10  warning  'Globe' is defined but never used                                                                   @typescript-eslint/no-unused-vars
+  118:26  warning  Unused eslint-disable directive (no problems were reported from 'react-hooks/set-state-in-effect')
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/components/SyncEngine.tsx
+  4:21  warning  'useRef' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/components/app-sidebar.tsx
+  3:10  warning  'useState' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/store/useAssembliesStore.ts
+  5:10  warning  'AssemblyItem' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/store/useClientsStore.ts
+  36:16  warning  'e' is defined but never used              @typescript-eslint/no-unused-vars
+  68:13  warning  'prev' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/store/useHistoryStore.ts
+  3:25  warning  'DbValues' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/store/useMenuStore.ts
+  5:42  warning  'DbValues' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/store/useOrdersStore.ts
+  5:23  warning  'OrderItem' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/store/useRecipesStore.ts
+  5:10  warning  'RecipeIngredient' is defined but never used  @typescript-eslint/no-unused-vars
+  5:44  warning  'DbValues' is defined but never used          @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/store/useShiftsStore.ts
+  4:10  warning  'useWorkersStore' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/store/useStocktakeStore.ts
+  1:17  warning  'DbValues' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/store/useSuppliersStore.ts
+  1:17  warning  'DbValues' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/klai/AI/borsch-shop/apps/backoffice/src/store/useWasteStore.ts
+  1:17  warning  'DbValues' is defined but never used  @typescript-eslint/no-unused-vars
+
+✖ 44 problems (0 errors, 44 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+
