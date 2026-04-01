@@ -36,4 +36,4 @@ def test_vision_morph_missing_file():
     vision = VisionMorph()
     vision.client = DummyClient()
     result = vision.analyze_screenshot("non_existent_file.png")
-    assert "не найден" in result
+    assert "not found" in result

@@ -1,3 +1,3 @@
 rules:
-  - "В каждом генерируемом роутере (API-Morph) добавляй JWT-проверку. ВАЖНО: всегда импортируй JWT так: `from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials`."
-  - "В UI-Morph при логине/оплате всегда симулируй защищенное соединение (хотя бы в UX показать замочек)."
+  - "In every generated router (API-Morph), add JWT validation. IMPORTANT: always import JWT like this: `from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials`."
+  - "In UI-Morph, always simulate a secure connection during login/payment (at least show a lock icon in the UX)."

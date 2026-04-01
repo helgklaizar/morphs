@@ -19,32 +19,32 @@ class PlanStep(BaseModel):
 
 class PlanTracker(BaseModel):
     """
-    Математически строгая FSM для управления планом выполнения.
+    A mathematically rigorous FSM for managing the execution plan.
     """
     task_id: str
     steps: List[PlanStep] = Field(default_factory=list)
     
     def create_plan(self, steps_data: List[dict]):
-        """Инициализация FSM новыми шагами"""
+        """Initializes the FSM with new steps"""
         self.steps = []
         for s in steps_data:
             self.steps.append(PlanStep(**s))
-        logger.info(f"📋 [PlanTracker] План для задачи {self.task_id} создан. Шагов: {len(self.steps)}")
+        logger.info(f"📋 [PlanTracker] Plan for task {self.task_id} created. Steps: {len(self.steps)}")
 
     def update_step_status(self, step_id: str, new_status: PlanStatus, evidence: str = None) -> bool:
-        """Атомарная стейт-транзакция (state transition)."""
+        """Atomic state transaction (state transition)."""
         for step in self.steps:
             if step.step_id == step_id:
                 step.status = new_status
                 if evidence:
                     step.evidence = evidence
-                logger.info(f"🔄 [PlanTracker] Шаг '{step_id}' перешел в статус: {new_status.value.upper()}")
+                logger.info(f"🔄 [PlanTracker] Step '{step_id}' transitioned to status: {new_status.value.upper()}")
                 return True
-        logger.error(f"❌ [PlanTracker] Шаг '{step_id}' не найден.")
+        logger.error(f"❌ [PlanTracker] Step '{step_id}' not found.")
         return False
 
     def get_current_step(self) -> Optional[PlanStep]:
-        """Возвращает первый не пройденный шаг."""
+        """Returns the first non-completed step."""
         for step in self.steps:
             if step.status in (PlanStatus.PENDING, PlanStatus.IN_PROGRESS, PlanStatus.FAILED):
                 return step
@@ -52,18 +52,18 @@ class PlanTracker(BaseModel):
 
     def verify_plan_execution(self) -> bool:
         """
-        Проверка инварианта: ∀ step ∈ Plan → status == SUCCESS (или SKIPPED).
+        Invariant check: ∀ step ∈ Plan → status == SUCCESS (or SKIPPED).
         """
         for step in self.steps:
             if step.status not in (PlanStatus.SUCCESS, PlanStatus.SKIPPED):
-                logger.warning(f"⚠️ [PlanTracker] Инвариант нарушен на шаге: {step.step_id} (Статус: {step.status.value})")
+                logger.warning(f"⚠️ [PlanTracker] Invariant violated at step: {step.step_id} (Status: {step.status.value})")
                 return False
-        logger.info(f"✅ [PlanTracker] Инвариант плана выполнен. Все шаги успешны.")
+        logger.info(f"✅ [PlanTracker] Plan invariant holds. All steps are successful.")
         return True
 
     def get_plan_summary(self) -> str:
-        """Возвращает читабельную сводку для LLM."""
-        summary = f"ПЛАН ЗАДАЧИ {self.task_id}:\n"
+        """Returns a readable summary for the LLM."""
+        summary = f"TASK PLAN {self.task_id}:\n"
         for step in self.steps:
             mark = "[ ]"
             if step.status == PlanStatus.SUCCESS:

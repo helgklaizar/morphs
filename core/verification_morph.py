@@ -6,9 +6,9 @@ from config import settings
 
 class VerificationMorph:
     """
-    Независимый "Судья". Изолирован от слоя генерации.
-    Единственный, кто может вынести вердикт "Success".
-    Защищает от LLM-самообмана.
+    Independent "Judge". Isolated from the generation layer.
+    The only one who can deliver a "Success" verdict.
+    Protects against LLM self-deception.
     """
     def __init__(self, target_dir: str, work_dir: str, target_file: str):
         self.target_dir = target_dir
@@ -17,13 +17,13 @@ class VerificationMorph:
         
     async def run_verification(self) -> tuple[bool, str]:
         """
-        Запускает изолированные тесты. Сначала unit-тесты (HealerMorph),
-        затем E2E (BrowserMorph). Возвращает (успех, evidence_log).
+        Runs isolated tests. First, unit tests (HealerMorph),
+        then E2E (BrowserMorph). Returns (success, evidence_log).
         """
-        logger.info("⚖️ [Verification-Morph] Начинаю жесткую независимую верификацию...")
+        logger.info("⚖️ [Verification-Morph] Starting strict independent verification...")
         evidence_log = ""
         
-        # 1. Запуск Unit/Vitest тестов
+        # 1. Run Unit/Vitest tests
         healer = HealerMorph(self.target_dir, self.target_file)
         # Assuming HealerMorph.run_tests was fixed in reality, but we use the existing return signature
         try:
@@ -38,12 +38,12 @@ class VerificationMorph:
         evidence_log += f"VITEST STDOUT:\n{out}\nVITEST STDERR:\n{err}\n"
         
         if code_res != 0:
-            logger.warning("❌ [Verification-Morph] Unit-тесты ПРОВАЛЕНЫ.")
+            logger.warning("❌ [Verification-Morph] Unit tests FAILED.")
             return False, evidence_log
             
-        logger.info("✅ [Verification-Morph] Unit-тесты ПРОЙДЕНЫ.")
+        logger.info("✅ [Verification-Morph] Unit tests PASSED.")
         
-        # 2. Запуск E2E Browser Playwright
+        # 2. Run E2E Browser Playwright
         try:
             bm = BrowserMorph(target_url=f"http://localhost:{settings.VITE_DEV_PORT}")
             chaos_report = await bm.simulate_user_journey("chaos")
@@ -51,7 +51,7 @@ class VerificationMorph:
             evidence_log += f"\nE2E BROWSER REPORT:\n{chaos_report}\n"
             
             if chaos_report.get("status") == "failed":
-                logger.warning("❌ [Verification-Morph] E2E-тесты (Browser) ПРОВАЛЕНЫ.")
+                logger.warning("❌ [Verification-Morph] E2E tests (Browser) FAILED.")
                 return False, evidence_log
                 
         except Exception as e:
@@ -62,5 +62,5 @@ class VerificationMorph:
             # but for a strict verification agent, any exception is a failure.
             return False, evidence_log
             
-        logger.info("✅ [Verification-Morph] E2E-тесты ПРОЙДЕНЫ. Итог: SUCCESS.")
+        logger.info("✅ [Verification-Morph] E2E tests PASSED. Final result: SUCCESS.")
         return True, evidence_log

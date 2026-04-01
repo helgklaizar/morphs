@@ -1,15 +1,15 @@
 """
-kuzu_dashboard.py — REST API для дашборда визуализации Kùzu-графа.
+kuzu_dashboard.py — REST API for the Kùzu graph visualization dashboard.
 
-Эндпоинты:
-  GET  /api/v1/kuzu/graph        — узлы + рёбра в формате D3 (nodes/links)
-  GET  /api/v1/kuzu/stats        — статистика: кол-во файлов, классов, функций
-  POST /api/v1/kuzu/rebuild      — перестроить граф из воркспейса
-  GET  /api/v1/kuzu/export/json  — полный экспорт графа в JSON
-  GET  /api/v1/kuzu/export/csv   — экспорт рёбер в CSV
-  GET  /api/v1/kuzu/search       — поиск узлов по имени (?q=)
+Endpoints:
+  GET  /api/v1/kuzu/graph        — nodes + edges in D3 format (nodes/links)
+  GET  /api/v1/kuzu/stats        — statistics: number of files, classes, functions
+  POST /api/v1/kuzu/rebuild      — rebuild the graph from the workspace
+  GET  /api/v1/kuzu/export/json  — full graph export to JSON
+  GET  /api/v1/kuzu/export/csv   — export edges to CSV
+  GET  /api/v1/kuzu/search       — search nodes by name (?q=)
 
-Используется в ui/ React дашборде через FastAPI роутер.
+Used in the ui/ React dashboard via a FastAPI router.
 """
 
 from __future__ import annotations
@@ -51,7 +51,7 @@ def _fetch_all(conn: kuzu.Connection, query: str, params: Dict = None) -> List[L
 @router.get("/graph")
 def get_graph() -> JSONResponse:
     """
-    Возвращает граф в формате D3 Force-directed:
+    Returns the graph in D3 Force-directed format:
     { nodes: [{id, label, type, group}], links: [{source, target, type}] }
     """
     conn = _get_conn()
@@ -92,16 +92,16 @@ def get_graph() -> JSONResponse:
             links.append({"source": f"file::{fpath}", "target": f"func::{fname}", "type": "CONTAINS_FUNC"})
 
     except Exception as e:
-        logger.error(f"[KuzuDashboard] Ошибка запроса графа: {e}", exc_info=True)
+        logger.error(f"[KuzuDashboard] Error requesting graph: {e}", exc_info=True)
         return JSONResponse({"error": str(e)}, status_code=500)
 
-    logger.info(f"[KuzuDashboard] Граф: {len(nodes)} узлов, {len(links)} рёбер → отправлено в UI")
+    logger.info(f"[KuzuDashboard] Graph: {len(nodes)} nodes, {len(links)} edges → sent to UI")
     return JSONResponse({"nodes": nodes, "links": links})
 
 
 @router.get("/stats")
 def get_stats() -> JSONResponse:
-    """Статистика узлов графа."""
+    """Graph node statistics."""
     conn = _get_conn()
     try:
         files     = _fetch_all(conn, "MATCH (f:File) RETURN count(f)")
@@ -123,15 +123,15 @@ def get_stats() -> JSONResponse:
 @router.post("/rebuild")
 def rebuild_graph(workspace: Optional[str] = None) -> JSONResponse:
     """
-    Перестраивает граф из файлов воркспейса.
-    workspace — путь к директории; по умолчанию текущий cwd.
+    Rebuilds the graph from workspace files.
+    workspace — path to the directory; defaults to the current cwd.
     """
     ws = workspace or os.getcwd()
     try:
         from core.graph_rag import CodeLensMorph
         lens = CodeLensMorph(ws)
         lens.build_graph()
-        logger.info(f"[KuzuDashboard] Граф перестроен из: {ws}")
+        logger.info(f"[KuzuDashboard] Graph rebuilt from: {ws}")
         return JSONResponse({"status": "rebuilt", "workspace": ws})
     except Exception as e:
         logger.error(f"[KuzuDashboard] rebuild error: {e}", exc_info=True)
@@ -140,7 +140,7 @@ def rebuild_graph(workspace: Optional[str] = None) -> JSONResponse:
 
 @router.get("/export/json")
 def export_json() -> JSONResponse:
-    """Полный JSON-экспорт всех узлов и рёбер."""
+    """Full JSON export of all nodes and edges."""
     conn = _get_conn()
     try:
         data: Dict[str, List] = {"files": [], "classes": [], "functions": [], "edges_class": [], "edges_func": []}
@@ -156,7 +156,7 @@ def export_json() -> JSONResponse:
 
 @router.get("/export/csv")
 def export_csv() -> StreamingResponse:
-    """CSV-экспорт рёбер графа для Excel/DuckDB."""
+    """CSV export of graph edges for Excel/DuckDB."""
     conn = _get_conn()
     output = io.StringIO()
     writer = csv.writer(output)
@@ -180,7 +180,7 @@ def export_csv() -> StreamingResponse:
 
 @router.get("/search")
 def search_nodes(q: str = Query(..., min_length=1)) -> JSONResponse:
-    """Поиск узлов по части имени."""
+    """Search for nodes by a part of their name."""
     conn = _get_conn()
     results: List[Dict] = []
     try:

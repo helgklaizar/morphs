@@ -5,7 +5,7 @@ def test_bash_harness_safe_command(monkeypatch):
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     async def run_test():
         from unittest.mock import patch
-        with patch('core.interactive_helpers.ask_user_question', return_value=('Разрешить', None)):
+        with patch('core.interactive_helpers.ask_user_question', return_value=('Allow', None)):
             harness = BashHarness()
             inp = BashCommandInput(command="echo 'hello world'")
             out = await harness.execute(inp)
@@ -17,7 +17,7 @@ def test_bash_harness_forbidden_command(monkeypatch):
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     async def run_test():
         from unittest.mock import patch
-        with patch('core.interactive_helpers.ask_user_question', return_value=('Запретить', None)):
+        with patch('core.interactive_helpers.ask_user_question', return_value=('Deny', None)):
             harness = BashHarness()
             inp = BashCommandInput(command="rm -rf /test")
             out = await harness.execute(inp)
@@ -29,7 +29,7 @@ def test_bash_harness_timeout_command(monkeypatch):
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     async def run_test():
         from unittest.mock import patch
-        with patch('core.interactive_helpers.ask_user_question', return_value=('Разрешить', None)):
+        with patch('core.interactive_helpers.ask_user_question', return_value=('Allow', None)):
             harness = BashHarness()
             inp = BashCommandInput(command="sleep 2", timeout=1)
             out = await harness.execute(inp)
@@ -41,7 +41,7 @@ def test_bash_harness_background_command(monkeypatch):
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
     async def run_test():
         from unittest.mock import patch
-        with patch('core.interactive_helpers.ask_user_question', return_value=('Разрешить', None)):
+        with patch('core.interactive_helpers.ask_user_question', return_value=('Allow', None)):
             harness = BashHarness()
             inp = BashCommandInput(command="echo 'bg'", run_in_background=True)
             out = await harness.execute(inp)

@@ -9,28 +9,28 @@ from core.post_sampling_hooks import PostSamplingHooks
 from core.prompt_hierarchy import PromptHierarchy, build_agent_prompt, KV_CACHE_BOUNDARY
 from core.system_reminder import inject_reminders, strip_reminders
 
-# Регистрация хука для подсчета токенов в фоне
+# Registering a hook for background token counting
 PostSamplingHooks.register(
     lambda model_name, in_toks, out_toks: global_cost_manager.add_usage(model_name, in_toks, out_toks)
 )
 
 class GeminiCore:
     """
-    «Тяжелая Артиллерия» ИИ.
-    Используется для архитектурных решений, где нужна логика Gemini 3.1 Pro / 2.5 Pro 
-    с контекстом 2M+ токенов, вместо локальных 8B параметров Llama-3.
-    Имеет ТОЧНО ТАКОЙ ЖЕ интерфейс `think` и `think_structured`, как локальный CoreMind (Drop-in Replacement).
+    The "Heavy Artillery" of AI.
+    Used for architectural solutions where Gemini 3.1 Pro / 2.5 Pro logic is needed
+    with a context of 2M+ tokens, instead of the local 8B parameter Llama-3.
+    Has the EXACT SAME `think` and `think_structured` interface as the local CoreMind (Drop-in Replacement).
     """
 
     def __init__(self, model_name="gemini-2.5-pro", api_key=None):
-        logger.info(f"☁️ [GeminiCore] Подключение к облаку Google Model: {model_name}...")
+        logger.info(f"☁️ [GeminiCore] Connecting to Google Cloud Model: {model_name}...")
         self.model_name = model_name
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
         if not self.api_key:
-            logger.info("⚠️ [GeminiCore] Внимание: GEMINI_API_KEY не установлен. Вызовы API упадут!")
+            logger.info("⚠️ [GeminiCore] Warning: GEMINI_API_KEY is not set. API calls will fail!")
         
         self.client = genai.Client(api_key=self.api_key)
-        logger.info("✅ [GeminiCore] Подключение успешно.")
+        logger.info("✅ [GeminiCore] Connection successful.")
 
     def think(
         self,
@@ -41,28 +41,28 @@ class GeminiCore:
         tool_output: str = "",
     ) -> str:
         """
-        Стандартная генерация.
+        Standard generation.
 
         Args:
-            agent_role:   Роль агента для prompt hierarchy (слой 'agent').
-            tool_output:  Вывод инструмента — будет обогащён system-reminder тегами
-                          и инжектирован в начало промпта.
+            agent_role:   The agent's role for the prompt hierarchy ('agent' layer).
+            tool_output:  The tool's output — will be enriched with system-reminder tags
+                          and injected at the beginning of the prompt.
         """
-        logger.info("⚡️ [GeminiCore] Мышление (Standard)...")
+        logger.info("⚡️ [GeminiCore] Thinking (Standard)...")
         from core.memory_morph import MemoryMorph
 
-        # ── [Prompt Hierarchy] Сборка системного промпта ──────────────────
+        # ── [Prompt Hierarchy] Assembling the system prompt ──────────────────
         built = build_agent_prompt(
-            agent_role=agent_role or "Ты — Enterprise CoreMind. Действуй строго как крутой Senior разработчик.",
+            agent_role=agent_role or "You are Enterprise CoreMind. Act strictly as a cool Senior developer.",
         )
         system_instruction = built.static_system
 
-        # ── [SystemReminder] Инжектируем поведенческие теги в tool output ──
+        # ── [SystemReminder] Injecting behavioral tags into tool output ──
         enriched_tool = ""
         if tool_output:
             enriched_tool = inject_reminders(tool_output, source="tool_output", extra_context=prompt)
 
-        # Финальный промпт: dynamic_prefix + tool output + задача
+        # Final prompt: dynamic_prefix + tool output + task
         parts = [p for p in [built.dynamic_prefix, enriched_tool, prompt] if p]
         final_prompt = "\n\n".join(parts)
 
@@ -81,42 +81,42 @@ class GeminiCore:
             except Exception as e:
                 err_str = str(e).lower()
                 if "context" in err_str or "exceed" in err_str or "400" in err_str:
-                    logger.warning(f"🔄 [ContextLengthExceeded] Экстренный перехват ошибки: {e}. Принудительное сжатие контекста...")
+                    logger.warning(f"🔄 [ContextLengthExceeded] Emergency error interception: {e}. Forcing context compression...")
                     new_prompt = MemoryMorph.microcompact(final_prompt, max_chars=len(final_prompt) // 2)
                     if len(new_prompt) >= len(final_prompt):
-                        logger.error("❌ Контекст не удалось сжать!")
+                        logger.error("❌ Failed to compress context!")
                         raise e
                     final_prompt = new_prompt
                     continue
-                logger.error(f"❌ [GeminiCore] Ошибка генерации: {e}")
+                logger.error(f"❌ [GeminiCore] Generation error: {e}")
                 return "Error"
         
-        # 💵 Трекинг токенов (Post-sampling Hook)
+        # 💵 Token tracking (Post-sampling Hook)
         try:
             if hasattr(response, "usage_metadata") and response.usage_metadata:
                 in_toks = response.usage_metadata.prompt_token_count
                 out_toks = response.usage_metadata.candidates_token_count
                 PostSamplingHooks.execute(model_name=self.model_name, in_toks=in_toks, out_toks=out_toks)
         except Exception as e:
-            logger.info(f"⚠️ [PostHook] Не удалось извлечь токены: {e}")
+            logger.info(f"⚠️ [PostHook] Failed to extract tokens: {e}")
 
         try:
             raw = response.text or ""
-            # Удаляем system-reminder теги из ответа перед возвратом пользователю
+            # Remove system-reminder tags from the response before returning to the user
             return strip_reminders(raw)
         except Exception as e:
-            logger.error(f"❌ [GeminiCore] Ошибка извлечения текста из API: {e}. Response: {response}")
+            logger.error(f"❌ [GeminiCore] Error extracting text from API: {e}. Response: {response}")
             return "Error"
 
     def think_structured(self, prompt: str, schema_description: str, max_tokens: int = 8192, expert_adapter: str = None, temperature: float = 0.5) -> dict:
         """
-        Форсированная генерация Graph of Thoughts и КОДА через XML теги.
+        Forced generation of Graph of Thoughts and CODE via XML tags.
         """
         skill_instruction = ""
         if expert_adapter:
-            logger.info(f"🔥 [GeminiCore] Настройка системного промпта для специализации: [{expert_adapter.upper()}]")
+            logger.info(f"🔥 [GeminiCore] Configuring system prompt for specialization: [{expert_adapter.upper()}]")
             
-            # 🧪 [Skills Manager] Загружаем Markdown-компетенции и Хуки (Task 14)
+            # 🧪 [Skills Manager] Loading Markdown competencies and Hooks (Task 14)
             from core.skills_manager import SkillsManager
             from core.tool_registry_morph import ToolRegistryMorph
             
@@ -124,18 +124,18 @@ class GeminiCore:
             skills_mgr.discover_skills()
             
             if expert_adapter in skills_mgr.skills:
-                logger.info(f"📖 [GeminiCore] Подгружен скилл '{expert_adapter}' со встроенными хуками!")
-                skill_instruction = "\n🎯 ИНСТРУКЦИЯ СКИЛЛА (SKILL.md):\n" + skills_mgr.get_skill(expert_adapter) + "\n\n"
+                logger.info(f"📖 [GeminiCore] Loaded skill '{expert_adapter}' with built-in hooks!")
+                skill_instruction = "\n🎯 SKILL INSTRUCTION (SKILL.md):\n" + skills_mgr.get_skill(expert_adapter) + "\n\n"
                 
-                # Запускаем pre_hooks, интегрируясь с реестром тулзов
+                # Running pre_hooks, integrating with the tool registry
                 try:
                     registry = ToolRegistryMorph()
                     skills_mgr.run_pre_hooks(expert_adapter, {}, registry=registry)
                 except Exception as e:
-                    logger.warning(f"⚠️ [GeminiCore] Ошибка при вызове Pre-Hooks скилла {expert_adapter}: {e}")
+                    logger.warning(f"⚠️ [GeminiCore] Error calling Pre-Hooks for skill {expert_adapter}: {e}")
             
-        # 🧬 [Atropos RL] Загружаем память ошибок проектов (LanceDB Vector DB), чтобы Gemini их не повторяла
-        rl_experience = "Нет прошлых ошибок."
+        # 🧬 [Atropos RL] Loading project error memory (LanceDB Vector DB) so Gemini doesn't repeat them
+        rl_experience = "No past mistakes."
         try:
             from core.atropos_memory import AtroposMemory
             memory_db = AtroposMemory()
@@ -145,27 +145,27 @@ class GeminiCore:
         except Exception as e:
             logger.info(f"⚠️ [GeminiCore] AtroposMemory warning: {e}")
 
-        # ── [Prompt Hierarchy] Многослойная сборка O1-промпта ─────────────
+        # ── [Prompt Hierarchy] Multi-layered O1-prompt assembly ─────────────
         agent_role_str = (
-            "Ты — Enterprise CoreMind (Gemini Edition). "
-            "Твой процесс мышления должен состоять из 'Дерева Рассуждений' перед написанием кода!\n"
-            "ОБЯЗАТЕЛЬНО используй формат XML-тегов для ответа. Никакого текста вне тегов.\n"
-            f"ФОРМАТ ОТВЕТА:\n{schema_description}"
+            "You are Enterprise CoreMind (Gemini Edition). "
+            "Your thought process must consist of a 'Tree of Thoughts' before writing code!\n"
+            "You MUST use the XML tag format for the response. No text outside the tags.\n"
+            f"RESPONSE FORMAT:\n{schema_description}"
         )
         built = build_agent_prompt(
             agent_role=agent_role_str,
             skill_content=skill_instruction or None,
-            rl_experience=rl_experience if rl_experience != "Нет прошлых ошибок." else None,
+            rl_experience=rl_experience if rl_experience != "No past mistakes." else None,
         )
         system_instruction = built.static_system
-        # dynamic_prefix (agent role + skill + RL) идёт в начало user-промпта
+        # dynamic_prefix (agent role + skill + RL) goes at the beginning of the user prompt
         dynamic_prefix = built.dynamic_prefix
         
-        logger.info("⚡️ [GeminiCore] Мышление O1-Mode (XML Graph of Thoughts)...")
+        logger.info("⚡️ [GeminiCore] Thinking in O1-Mode (XML Graph of Thoughts)...")
         
         from core.memory_morph import MemoryMorph
 
-        # Собираем финальный промпт: dynamic layers + user task
+        # Assembling the final prompt: dynamic layers + user task
         parts = [p for p in [dynamic_prefix, prompt] if p]
         final_prompt = "\n\n".join(parts)
 
@@ -184,45 +184,45 @@ class GeminiCore:
             except Exception as e:
                 err_str = str(e).lower()
                 if "context" in err_str or "exceed" in err_str or "400" in err_str:
-                    logger.warning(f"🔄 [ContextLengthExceeded] Экстренный перехват ошибки: {e}. Принудительное сжатие контекста...")
+                    logger.warning(f"🔄 [ContextLengthExceeded] Emergency error interception: {e}. Forcing context compression...")
                     new_prompt = MemoryMorph.microcompact(final_prompt, max_chars=len(final_prompt) // 2)
                     if len(new_prompt) >= len(final_prompt):
-                        logger.error("❌ [ContextLengthExceeded] Контекст не удалось сжать!")
+                        logger.error("❌ [ContextLengthExceeded] Failed to compress context!")
                         raise e
                     final_prompt = new_prompt
                     continue
-                logger.error(f"❌ [GeminiCore] Ошибка генерации O1: {e}")
+                logger.error(f"❌ [GeminiCore] O1 generation error: {e}")
                 response = None
                 break
         
         if not response:
             return {"thought": "Error", "code": "Error generated", "component_code": "Error generated"}
 
-        # 💵 Трекинг токенов (Post-sampling Hook)
+        # 💵 Token tracking (Post-sampling Hook)
         try:
             if hasattr(response, "usage_metadata") and response.usage_metadata:
                 in_toks = response.usage_metadata.prompt_token_count
                 out_toks = response.usage_metadata.candidates_token_count
                 PostSamplingHooks.execute(model_name=self.model_name, in_toks=in_toks, out_toks=out_toks)
         except Exception as e:
-            logger.info(f"⚠️ [PostHook] Не удалось извлечь токены: {e}")
+            logger.info(f"⚠️ [PostHook] Failed to extract tokens: {e}")
         
         try:
             raw_output = response.text or ""
             if not raw_output:
-                logger.error(f"❌ [GeminiCore] Пустой ответ от API! Response Data: {response}")
+                logger.error(f"❌ [GeminiCore] Empty response from API! Response Data: {response}")
                 raw_output = "<thought>Error</thought><code>Error generated</code>"
         except Exception as e:
-            logger.error(f"❌ [GeminiCore] Ошибка извлечения текста из API: {e}. Response: {response}")
+            logger.error(f"❌ [GeminiCore] Error extracting text from API: {e}. Response: {response}")
             raw_output = "<thought>Error</thought><code>Error generated</code>"
             
-        # Парсер 1-в-1 как в mlx_agent.py, чтобы остальной код программы не пришлось менять
+        # Parser is 1-to-1 the same as in mlx_agent.py, so the rest of the program's code doesn't need to be changed
         tags = re.findall(r'<([a-zA-Z0-9_]+)>(.*?)</\1>', raw_output, re.DOTALL)
         result_dict = {tag: content.replace("```python", "").replace("```tsx", "").replace("```", "").strip() for tag, content in tags}
             
         if "thought" not in result_dict:
             thought_match = re.search(r'<thought>(.*?)</thought>', raw_output, re.DOTALL)
-            result_dict["thought"] = thought_match.group(1).strip() if thought_match else "Нет мыслей"
+            result_dict["thought"] = thought_match.group(1).strip() if thought_match else "No thoughts"
             
         if "code" not in result_dict and "component_code" not in result_dict:
             fallback = re.split(r'</thought>', raw_output)[-1]
@@ -235,11 +235,11 @@ class GeminiCore:
         if "component_code" in result_dict and "code" not in result_dict:
             result_dict["code"] = result_dict["component_code"]
             
-        # 🧪 [Skills Manager] Исполняем Post-Hooks (Валидация после генерации)
+        # 🧪 [Skills Manager] Executing Post-Hooks (Validation after generation)
         if expert_adapter and 'skills_mgr' in locals() and expert_adapter in skills_mgr.skills:
             try:
                 skills_mgr.run_post_hooks(expert_adapter, result_dict.get("code", ""), registry=locals().get('registry'))
             except Exception as e:
-                logger.warning(f"⚠️ [GeminiCore] Ошибка при вызове Post-Hooks скилла {expert_adapter}: {e}")
+                logger.warning(f"⚠️ [GeminiCore] Error calling Post-Hooks for skill {expert_adapter}: {e}")
                 
         return result_dict

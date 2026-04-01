@@ -1,10 +1,10 @@
 """
 concurrent_tools.py — Task 12 & 36: Tool Concurrency & Safe Queuing
 
-Реализует:
-1. ParallelBatcher — параллельный батчинг read-only тулзов (Glob, Read, Find)
-2. MutationQueue — жёсткая FIFO-очередь для мутирующих операций (Edit, Delete, Write)
-   чтобы ответы вшивались в SessionMemory последовательно, не ломая графы знаний.
+Implements:
+1. ParallelBatcher — parallel batching of read-only tools (Glob, Read, Find)
+2. MutationQueue — a strict FIFO queue for mutating operations (Edit, Delete, Write)
+   to ensure that responses are embedded into SessionMemory sequentially, without breaking knowledge graphs.
 """
 import asyncio
 import time
@@ -16,15 +16,15 @@ from core.logger import logger
 
 
 class ToolCategory(str, Enum):
-    """Категория тулзы определяет режим исполнения."""
-    READ_ONLY = "read_only"      # Параллельный батчинг — безопасно
-    MUTATION  = "mutation"       # Строгая очередь — никаких гонок
-    DANGEROUS = "dangerous"      # Требует user confirmation + очередь
+    """The tool category determines the execution mode."""
+    READ_ONLY = "read_only"      # Parallel batching — safe
+    MUTATION  = "mutation"       # Strict queue — no races
+    DANGEROUS = "dangerous"      # Requires user confirmation + queue
 
 
-# Реестр категорий инструментов
+# Registry of tool categories
 TOOL_CATEGORIES: dict[str, ToolCategory] = {
-    # Read-only — можно параллелить
+    # Read-only — can be parallelized
     "read_file"       : ToolCategory.READ_ONLY,
     "glob_files"      : ToolCategory.READ_ONLY,
     "grep_search"     : ToolCategory.READ_ONLY,
@@ -35,7 +35,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
     "list_worktrees"  : ToolCategory.READ_ONLY,
     "get_worktree_path": ToolCategory.READ_ONLY,
     "search_tools"    : ToolCategory.READ_ONLY,
-    # Мутации — строгая очередь
+    # Mutations — strict queue
     "edit_file"          : ToolCategory.MUTATION,
     "enter_worktree"     : ToolCategory.MUTATION,
     "exit_worktree"      : ToolCategory.MUTATION,
@@ -44,7 +44,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
     "spawn_agent"        : ToolCategory.MUTATION,
     "close_agent"        : ToolCategory.MUTATION,
     "send_message"       : ToolCategory.MUTATION,
-    # Опасные — очередь + подтверждение
+    # Dangerous — queue + confirmation
     "bash_run"           : ToolCategory.DANGEROUS,
     "deploy_prod"        : ToolCategory.DANGEROUS,
     "db_drop"            : ToolCategory.DANGEROUS,
@@ -53,7 +53,7 @@ TOOL_CATEGORIES: dict[str, ToolCategory] = {
 
 @dataclass
 class ToolCall:
-    """Единица работы для concurrency-движка."""
+    """A unit of work for the concurrency engine."""
     tool_name: str
     func: Callable
     args: dict
@@ -66,16 +66,16 @@ class ToolCall:
 
 class SessionMemory:
     """
-    Минимальный in-memory журнал результатов тулзов.
-    Гарантирует последовательную запись через asyncio.Lock.
-    Интегрируется с GraphRAG/Kùzu при записи мутаций.
+    A minimal in-memory log of tool results.
+    Guarantees sequential writing via asyncio.Lock.
+    Integrates with GraphRAG/Kùzu when writing mutations.
     """
     def __init__(self):
         self._log: list[dict] = []
         self._lock = asyncio.Lock()
 
     async def record(self, call: ToolCall):
-        """Атомарно записывает результат в журнал."""
+        """Atomically records the result in the log."""
         async with self._lock:
             entry = {
                 "call_id"     : call.call_id,
@@ -105,19 +105,19 @@ class SessionMemory:
 
 class ParallelBatcher:
     """
-    Task 12 — параллельный батчинг read-only тулзов.
-    Несколько Glob/Read/LSP вызовов запускаются одновременно
-    через asyncio.gather() и все результаты сохраняются в SessionMemory.
+    Task 12 — parallel batching of read-only tools.
+    Multiple Glob/Read/LSP calls are launched simultaneously
+    via asyncio.gather() and all results are saved to SessionMemory.
     """
     def __init__(self, session_memory: SessionMemory):
         self.memory = session_memory
 
     async def run_batch(self, calls: list[ToolCall]) -> dict[str, Any]:
         """
-        Запускает все read-only вызовы параллельно.
-        Возвращает dict {call_id: result}.
+        Runs all read-only calls in parallel.
+        Returns a dict {call_id: result}.
         """
-        # Фильтруем: только READ_ONLY
+        # Filter: only READ_ONLY
         read_only = []
         skipped = []
         for c in calls:
@@ -140,7 +140,7 @@ class ParallelBatcher:
                 if asyncio.iscoroutinefunction(call.func):
                     call.result = await call.func(**call.args)
                 else:
-                    # Запускаем синхронную функцию в executor чтобы не блокировать loop
+                    # Run synchronous function in an executor to avoid blocking the loop
                     loop = asyncio.get_running_loop()
                     call.result = await loop.run_in_executor(
                         None, lambda: call.func(**call.args)
@@ -164,9 +164,9 @@ class ParallelBatcher:
 
 class MutationQueue:
     """
-    Task 36 — строгая FIFO-очередь для мутирующих операций.
-    Гарантирует что Edit/Write/Worktree операции выполняются строго последовательно,
-    исключая race-conditions при записи в GraphRAG/Kùzu.
+    Task 36 — a strict FIFO queue for mutating operations.
+    Ensures that Edit/Write/Worktree operations are executed strictly sequentially,
+    preventing race conditions when writing to GraphRAG/Kùzu.
     """
     def __init__(self, session_memory: SessionMemory):
         self.memory = session_memory
@@ -175,25 +175,25 @@ class MutationQueue:
         self._running = False
 
     def start(self):
-        """Запускает фоновый worker для обработки очереди."""
+        """Starts a background worker to process the queue."""
         if not self._running:
             self._running = True
             try:
                 loop = asyncio.get_running_loop()
                 self._worker_task = loop.create_task(self._worker())
             except RuntimeError:
-                # Нет running loop — откладываем старт до первого enqueue
+                # No running loop — defer start until the first enqueue
                 self._worker_task = None
             logger.info("🔒 [MutationQueue] Worker started.")
 
     def stop(self):
-        """Останавливает worker."""
+        """Stops the worker."""
         self._running = False
         if self._worker_task:
             self._worker_task.cancel()
 
     async def _worker(self):
-        """Строго последовательно обрабатывает мутации."""
+        """Processes mutations strictly sequentially."""
         while self._running:
             try:
                 call = await asyncio.wait_for(self._queue.get(), timeout=1.0)
@@ -224,8 +224,8 @@ class MutationQueue:
 
     async def enqueue(self, call: ToolCall) -> ToolCall:
         """
-        Добавляет мутацию в очередь и возвращает ToolCall.
-        Вызывающий может await call.done через wait_for_completion().
+        Adds a mutation to the queue and returns the ToolCall.
+        The caller can await call.done via wait_for_completion().
         """
         await self._queue.put(call)
         logger.info(
@@ -235,7 +235,7 @@ class MutationQueue:
         return call
 
     async def wait_for_completion(self, call: ToolCall, timeout: float = 60.0) -> str:
-        """Блокирует до выполнения конкретного вызова."""
+        """Blocks until a specific call is completed."""
         deadline = time.time() + timeout
         while not call.done and time.time() < deadline:
             await asyncio.sleep(0.1)
@@ -246,7 +246,7 @@ class MutationQueue:
         return str(call.result)
 
     async def drain(self):
-        """Ожидает пока очередь не опустеет."""
+        """Waits until the queue is empty."""
         await self._queue.join()
         logger.info("✅ [MutationQueue] All mutations processed.")
 
@@ -257,8 +257,8 @@ class MutationQueue:
 
 class ToolConcurrencyEngine:
     """
-    Фасад для управления concurrency тулзов.
-    Автоматически маршрутизирует вызовы в ParallelBatcher или MutationQueue.
+    A facade for managing tool concurrency.
+    Automatically routes calls to either ParallelBatcher or MutationQueue.
     """
     def __init__(self):
         self.memory = SessionMemory()
@@ -277,11 +277,11 @@ class ToolConcurrencyEngine:
 
     async def execute(self, calls: list[ToolCall]) -> dict[str, Any]:
         """
-        Маршрутизирует вызовы:
-        - READ_ONLY → параллельный батчинг
-        - MUTATION/DANGEROUS → строгая очередь
+        Routes calls:
+        - READ_ONLY → parallel batching
+        - MUTATION/DANGEROUS → strict queue
         
-        Возвращает dict {call_id: result} после завершения всех вызовов.
+        Returns a dict {call_id: result} after all calls are completed.
         """
         read_calls = []
         mut_calls = []
@@ -295,12 +295,12 @@ class ToolConcurrencyEngine:
 
         results = {}
 
-        # Параллельно запускаем read-only
+        # Run read-only calls in parallel
         if read_calls:
             read_results = await self.batcher.run_batch(read_calls)
             results.update(read_results)
 
-        # Последовательно ставим мутации в очередь и ждём
+        # Sequentially enqueue mutations and wait
         if mut_calls:
             for c in mut_calls:
                 await self.mutation_queue.enqueue(c)
@@ -317,7 +317,7 @@ class ToolConcurrencyEngine:
         return self.memory.last_result(tool_name)
 
 
-# Глобальный синглтон движка (инициализируется при старте CoreMind)
+# Global engine singleton (initialized on CoreMind startup)
 _engine: Optional[ToolConcurrencyEngine] = None
 
 

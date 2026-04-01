@@ -26,20 +26,20 @@ class SwarmOrchestrator:
     """
     def __init__(self, watchdog):
         self.watchdog = watchdog
-        # {epic_id: [agent_id, ...]} — реестр параллельных пулов (Задача 37)
+        # {epic_id: [agent_id, ...]} — registry of parallel pools (Task 37)
         self._agent_pool: dict[str, list[str]] = {}
 
     async def setup_listeners(self):
-        logger.info("🧠 [Orchestrator] Подписка на шину событий (Swarm Protocol)...")
+        logger.info("🧠 [Orchestrator] Subscribing to the event bus (Swarm Protocol)...")
         await bus.subscribe("swarm.task.created", self.on_task_created)
         await bus.subscribe("swarm.backend.generated", self.on_backend_generated)
         await bus.subscribe("swarm.ui.generated", self.on_ui_generated)
         await bus.subscribe("swarm.deployment.failed", self.on_deployment_failed)
-        # Новый топик для эпиков с параллельными агентами (Задача 35)
+        # New topic for epics with parallel agents (Task 35)
         await bus.subscribe("swarm.epic.created", self.on_epic_task_created)
 
     async def trigger_task(self, task_id: str, business_type: str, message: str):
-        logger.info(f"📡 [Orchestrator] Публикация задачи '{task_id}' в EventBus...")
+        logger.info(f"📡 [Orchestrator] Publishing task '{task_id}' to EventBus...")
         await bus.publish("swarm.task.created", {
             "task_id": task_id,
             "business_type": business_type,
@@ -47,7 +47,7 @@ class SwarmOrchestrator:
         })
 
     # ------------------------------------------------------------------
-    # Epic Orchestration — параллельные пулы Explore + Plan (Задача 35 & 37)
+    # Epic Orchestration — parallel Explore + Plan pools (Task 35 & 37)
     # ------------------------------------------------------------------
 
     async def spawn_explore_plan_team(
@@ -58,9 +58,9 @@ class SwarmOrchestrator:
         project_name: str,
     ) -> tuple[str, str]:
         """
-        Создаёт параллельную команду Explore + Plan субагентов.
-        Возвращает (explore_agent_id, plan_agent_id).
-        Задача 35 & 37: Dynamic Team с пулом агентов.
+        Creates a parallel team of Explore + Plan sub-agents.
+        Returns (explore_agent_id, plan_agent_id).
+        Task 35 & 37: Dynamic Team with an agent pool.
         """
         briefer = AgentBriefer(work_dir=work_dir, project_name=project_name)
         explore_brief, plan_brief = briefer.build_explore_plan_team(
@@ -68,9 +68,9 @@ class SwarmOrchestrator:
             parent_agent_id="orchestrator",
         )
 
-        logger.info(f"🚀 [Orchestrator] Параллельный запуск команды Explore+Plan для Epic '{epic_id}'")
+        logger.info(f"🚀 [Orchestrator] Parallel launch of Explore+Plan team for Epic '{epic_id}'")
 
-        # Запускаем параллельно (asyncio.gather)
+        # Launching in parallel (asyncio.gather)
         spawn_results = await asyncio.gather(
             AgentTools.spawn_agent(
                 role=explore_brief.role,
@@ -84,24 +84,24 @@ class SwarmOrchestrator:
             ),
         )
 
-        # Парсим agent_id из результатов
+        # Parsing agent_id from results
         explore_id = explore_brief.agent_id
         plan_id = plan_brief.agent_id
 
-        # Регистрируем пул
+        # Registering the pool
         self._agent_pool[epic_id] = [explore_id, plan_id]
-        logger.info(f"🧬 [Orchestrator] Пул для '{epic_id}': {self._agent_pool[epic_id]}")
+        logger.info(f"🧬 [Orchestrator] Pool for '{epic_id}': {self._agent_pool[epic_id]}")
 
-        # IPC: оповещаем Plan-агента, к кому идти за результатами Explore
+        # IPC: notifying the Plan agent where to get the Explore results
         await AgentTools.send_message(
             target_agent_id=plan_id,
-            message=f"Explore agent ID для запроса результатов: {explore_id}",
+            message=f"Explore agent ID to request results: {explore_id}",
         )
 
         return explore_id, plan_id
 
     async def close_epic_pool(self, epic_id: str) -> None:
-        """Закрывает всех агентов из пула Epic."""
+        """Closes all agents from the Epic pool."""
         agent_ids = self._agent_pool.pop(epic_id, [])
         for aid in agent_ids:
             result = await AgentTools.close_agent(aid)
@@ -109,8 +109,8 @@ class SwarmOrchestrator:
 
     async def on_epic_task_created(self, payload: dict):
         """
-        Обработчик нового топика 'swarm.epic.created'.
-        Для сложных эпиков — сразу формируем пул Explore+Plan.
+        Handler for the new 'swarm.epic.created' topic.
+        For complex epics — immediately form an Explore+Plan pool.
         """
         epic_id = payload.get("epic_id", "epic-unknown")
         task = payload.get("task", "")
@@ -118,7 +118,7 @@ class SwarmOrchestrator:
         project_name = payload.get("project_name", "default")
 
         self.watchdog.register_task(epic_id, f"Epic: {task[:50]}")
-        logger.info(f"📋 [Orchestrator] Новый Epic '{epic_id}' получен — спауним команду агентов...")
+        logger.info(f"📋 [Orchestrator] New Epic '{epic_id}' received — spawning agent team...")
 
         try:
             explore_id, plan_id = await self.spawn_explore_plan_team(
@@ -133,7 +133,7 @@ class SwarmOrchestrator:
                 "plan_agent_id": plan_id,
             })
         except Exception as e:
-            logger.error(f"🔥 [Orchestrator] Ошибка при создании团队 для Epic '{epic_id}': {e}", exc_info=True)
+            logger.error(f"🔥 [Orchestrator] Error creating team for Epic '{epic_id}': {e}", exc_info=True)
             await bus.publish("swarm.deployment.failed", {"task_id": epic_id, "error": str(e)})
 
     async def on_task_created(self, payload: dict):
@@ -141,7 +141,7 @@ class SwarmOrchestrator:
         business_type = payload.get("business_type")
         message = payload.get("message")
         
-        self.watchdog.register_task(task_id, "Генерация SaaS фичи через Чат")
+        self.watchdog.register_task(task_id, "Generating SaaS feature via Chat")
         
         self.plan_tracker = PlanTracker(task_id=task_id)
         self.plan_tracker.create_plan([
@@ -152,7 +152,7 @@ class SwarmOrchestrator:
             {"step_id": "deploy", "description": "Dockerize and Deploy", "assigned_expert": "DeployMorph"}
         ])
         
-        logger.info(f"💬 [Task Created] Разворачиваем IDE для задачи: {task_id}")
+        logger.info(f"💬 [Task Created] Setting up IDE for task: {task_id}")
         
         try:
             self.plan_tracker.update_step_status("init_workspace", PlanStatus.IN_PROGRESS)
@@ -175,13 +175,13 @@ class SwarmOrchestrator:
             memory = MemoryMorph()
             memory_context = memory.get_context_prompt()
             
-            if "используй" in message.lower() or "стиль" in message.lower():
+            if "use" in message.lower() or "style" in message.lower():
                 memory.add_preference(message)
 
             self.plan_tracker.update_step_status("init_workspace", PlanStatus.SUCCESS)
             self.plan_tracker.update_step_status("generate_backend", PlanStatus.IN_PROGRESS)
             
-            logger.info("⚙️ [Core] Генерация API-Бэкенда...")
+            logger.info("⚙️ [Core] Generating API-Backend...")
             api_agent = APIMorph(wm, project_name)
             
             from pydantic import BaseModel
@@ -204,13 +204,13 @@ class SwarmOrchestrator:
                     run_in_background=True,
                     cwd=backend_dir
                 ))
-                logger.info(f"✅ [Workspace] Сервер ({settings.SAAS_BACKEND_PORT}) стартовал через Sandboxed BashHarness.")
+                logger.info(f"✅ [Workspace] Server ({settings.SAAS_BACKEND_PORT}) started via Sandboxed BashHarness.")
             except Exception as e:
-                logger.info(f"🔥 [BashHarness] Ошибка: {e}")
+                logger.info(f"🔥 [BashHarness] Error: {e}")
 
             self.plan_tracker.update_step_status("generate_backend", PlanStatus.SUCCESS)
 
-            # Сигнализируем, что Бэкенд готов -> Призываем UI-Morph
+            # Signaling that the Backend is ready -> Summoning UI-Morph
             await bus.publish("swarm.backend.generated", {
                 "task_id": task_id,
                 "project_name": project_name,
@@ -228,7 +228,7 @@ class SwarmOrchestrator:
             await bus.publish("swarm.deployment.failed", {"task_id": task_id, "error": str(e)})
 
     async def on_backend_generated(self, payload: dict):
-        logger.info("🎨 [Event: Backend Generated] Запуск UI Мутаций...")
+        logger.info("🎨 [Event: Backend Generated] Starting UI Mutations...")
         task_id = payload.get("task_id")
         project_name = payload.get("project_name")
         work_dir = payload.get("work_dir")
@@ -237,7 +237,7 @@ class SwarmOrchestrator:
             self.plan_tracker.update_step_status("debate_architecture", PlanStatus.IN_PROGRESS)
 
         
-        # Получаем агента
+        # Getting the agent
         key = os.environ.get("GEMINI_API_KEY")
         if key:
             from core.gemini_agent import GeminiCore
@@ -247,15 +247,15 @@ class SwarmOrchestrator:
             agent = CoreMind()
 
         prompt = (
-            f"Мы строим ФРОНТЕНД на React/Vite (TSX + Tailwind v4).\n"
-            f"ЗАМОРОЖЕННОЕ ТЗ: {payload.get('frozen_spec')}\n"
-            f"БЭКЕНД ПОРТ: {settings.SAAS_BACKEND_PORT}\n"
-            f"АПИ КОД:\n{payload.get('backend_code')}\n\n"
-            f"Вывод в XML: <file path=\"src/App.tsx\">...</file>\n"
+            f"We are building a FRONTEND with React/Vite (TSX + Tailwind v4).\n"
+            f"FROZEN SPEC: {payload.get('frozen_spec')}\n"
+            f"BACKEND PORT: {settings.SAAS_BACKEND_PORT}\n"
+            f"API CODE:\n{payload.get('backend_code')}\n\n"
+            f"Output in XML: <file path=\"src/App.tsx\">...</file>\n"
         )
-        schema = "<thought>Анализ</thought>\n<multi_file>XML</multi_file>"
+        schema = "<thought>Analysis</thought>\n<multi_file>XML</multi_file>"
         
-        logger.info("🗣️ [Swarm Debate] Начинается спор Агентов (Coder vs Architect)...")
+        logger.info("🗣️ [Swarm Debate] Agent debate begins (Coder vs Architect)...")
         res = agent.think_structured(prompt, schema)
         multi_file_xml = res.get("multi_file", "")
         
@@ -284,10 +284,10 @@ class SwarmOrchestrator:
         )
         
         if not is_approved:
-            logger.info("❌ Архитектурный спор провален. Отправка на перегенерацию!")
+            logger.info("❌ Architectural debate failed. Sending for regeneration!")
             return # Future: add retry loop
             
-        logger.info("✅ [Architect-Morph] Ревью пройдено честно!")
+        logger.info("✅ [Architect-Morph] Review passed honestly!")
         
         if hasattr(self, "plan_tracker"):
             self.plan_tracker.update_step_status("debate_architecture", PlanStatus.SUCCESS)
@@ -302,7 +302,7 @@ class SwarmOrchestrator:
         })
 
     async def on_ui_generated(self, payload: dict):
-        logger.info("🚀 [Event: UI Generated] Запуск Авто-Тестов и E2E (Хирург)...")
+        logger.info("🚀 [Event: UI Generated] Starting Auto-Tests and E2E (Healer)...")
         task_id = payload.get("task_id")
         target_dir = payload.get("target_dir")
         work_dir = payload.get("work_dir")
@@ -320,18 +320,18 @@ class SwarmOrchestrator:
         task_proof.collect_evidence(task_id, "build.txt", f"VERIFICATION LOG:\n{evidence}")
         
         if not is_valid:
-            logger.info("🔥 [Verification] Тесты или E2E провалены! Healer-Morph лечит...")
+            logger.info("🔥 [Verification] Tests or E2E failed! Healer-Morph is healing...")
             from healer_morph import HealerMorph
             healer = HealerMorph("../configurator", f"{target_dir}/GeneratedModule.tsx")
             prompt_heal, fixed_code = await healer.heal_code(task_proof.get_task_folder(task_id))
             
-            # Вторая попытка верификации (Пост-фикс)
+            # Second verification attempt (Post-fix)
             is_valid2, evidence2 = await verifier.run_verification()
             if is_valid2:
-                logger.info("✅ [Verification] Баг исправлен Healer'ом!")
+                logger.info("✅ [Verification] Bug fixed by Healer!")
                 healer.record_trajectory(prompt_heal, "MLX Auto-Fix", 1, fixed_code)
             else:
-                logger.info("❌ [Verification] Хил не помог. ВАЙП. Откат!")
+                logger.info("❌ [Verification] Heal did not help. WIPE. Rollback!")
                 if hasattr(self, "plan_tracker"):
                     self.plan_tracker.update_step_status("verify_ui", PlanStatus.FAILED, evidence2)
                 git_morph.rollback()
@@ -343,12 +343,12 @@ class SwarmOrchestrator:
             self.plan_tracker.update_step_status("verify_ui", PlanStatus.SUCCESS)
             self.plan_tracker.update_step_status("deploy", PlanStatus.IN_PROGRESS)
             
-        logger.info("📦 [DevOps] Пакуем готовое SaaS решение в Docker (Deploy-Morph)...")
+        logger.info("📦 [DevOps] Packing the finished SaaS solution into Docker (Deploy-Morph)...")
         from deploy_morph import DeployMorph
         deployer = DeployMorph()
         deployer.generate_deploy_artifacts(work_dir, payload.get("project_name"))
         
-        # Сохраняем Blueprint State для тестов (эмуляция BlueprintsMorph)
+        # Saving Blueprint State for tests (emulating BlueprintsMorph)
         blueprint_dir = "blueprints"
         os.makedirs(blueprint_dir, exist_ok=True)
         with open(f"{blueprint_dir}/{payload.get('project_name')}_state.json", "w") as f:
@@ -360,13 +360,13 @@ class SwarmOrchestrator:
         if hasattr(self, "plan_tracker"):
             self.plan_tracker.update_step_status("deploy", PlanStatus.SUCCESS)
             if self.plan_tracker.verify_plan_execution():
-                logger.info("🎯 [Orchestrator] FSM-Инвариант Плана Выполнен (Все шаги SUCCESS).")
+                logger.info("🎯 [Orchestrator] FSM-Invariant of the Plan is Fulfilled (All steps SUCCESS).")
             else:
-                logger.warning("⚠️ [Orchestrator] План выполнен, но есть сломанные/пропущенные шаги.")
+                logger.warning("⚠️ [Orchestrator] Plan completed, but there are broken/skipped steps.")
                 
         self.watchdog.complete_task(task_id)
-        logger.info(f"🎉 [Swarm] Задача '{task_id}' завершена успешно! Docker-контейнеры готовы для Production.")
+        logger.info(f"🎉 [Swarm] Task '{task_id}' completed successfully! Docker containers are ready for Production.")
 
     async def on_deployment_failed(self, payload: dict):
-        logger.info(f"💀 [Fatal] Откат системы по задаче {payload.get('task_id')}: {payload.get('error')}")
+        logger.info(f"💀 [Fatal] System rollback for task {payload.get('task_id')}: {payload.get('error')}")
         self.watchdog.complete_task(payload.get('task_id'))

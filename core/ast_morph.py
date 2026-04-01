@@ -4,32 +4,32 @@ from core.logger import logger
 
 class ASTMorph:
     """
-    Мастер хирургического вмешательства (Синтаксическое дерево и Патчинг).
-    Избавляет систему от необходимости переписывать 1000 строк файла ради изменения одного цвета.
-    Поддерживает AST-превалидацию (для Python) и Diff-Patching (для TypeScript).
+    A master of surgical intervention (Abstract Syntax Tree and Patching).
+    Saves the system from having to rewrite 1000 lines of a file just to change one color.
+    Supports AST pre-validation (for Python) and Diff-Patching (for TypeScript).
     """
     def __init__(self, workspace_path: str = ""):
         self.workspace = workspace_path
 
     def validate_python_syntax(self, code: str) -> bool:
         """
-        Молниеносная пре-проверка Python кода через нативный `ast` модуль, 
-        прежде чем отдавать его на тестирование в сложный pytest.
+        Lightning-fast pre-check of Python code using the native `ast` module,
+        before sending it for testing in a complex pytest setup.
         """
         try:
             ast.parse(code)
             return True
         except SyntaxError as e:
-            logger.info(f"⚠️ [AST-Morph] Фатальная синтаксическая ошибка: {e}")
+            logger.info(f"⚠️ [AST-Morph] Fatal syntax error: {e}")
             return False
 
     def apply_diff_patch(self, original_text: str, patch_xml: str) -> str:
         """
-        Хирургическое наложение патча (AST-like Patching).
-        LLM возвращает:
-        <patch><target>старый код</target><replacement>новый код</replacement></patch>
+        Surgical application of a patch (AST-like Patching).
+        The LLM returns:
+        <patch><target>old code</target><replacement>new code</replacement></patch>
         """
-        logger.info("🧬 [AST-Morph] Применение гномной мутации (Patching)...")
+        logger.info("🧬 [AST-Morph] Applying patch mutation (Patching)...")
         patterns = re.finditer(r'<patch>\s*<target>(.*?)</target>\s*<replacement>(.*?)</replacement>\s*</patch>', patch_xml, re.DOTALL)
         
         modified_text = original_text
@@ -39,7 +39,7 @@ class ASTMorph:
             target = match.group(1).strip()
             replacement = match.group(2).strip()
             
-            # Экранируем спецсимволы, но разрешаем гибкие пробелы
+            # Escape special characters, but allow flexible whitespace
             target_escaped = re.escape(target)
             target_regex = re.sub(r'\\\s+', r'\\s+', target_escaped) 
             
@@ -48,17 +48,17 @@ class ASTMorph:
                 modified_text = new_text
                 patches_applied += 1
             else:
-                logger.info(f"❌ [AST-Morph] Патч не нашел блок: {target[:30]}...")
+                logger.info(f"❌ [AST-Morph] Patch did not find the block: {target[:30]}...")
                 
         if patches_applied > 0:
-            logger.info(f"✅ [AST-Morph] Успешно применено {patches_applied} мутаций к файлу. 0 лишних токенов!")
+            logger.info(f"✅ [AST-Morph] Successfully applied {patches_applied} mutations to the file. 0 extra tokens!")
         else:
-            logger.info("⚠️ [AST-Morph] Мутации не были применены. Возможна рассинхронизация контекста.")
+            logger.info("⚠️ [AST-Morph] Mutations were not applied. Possible context desynchronization.")
             
         return modified_text
 
 class ASTInvariantValidator:
-    """Математическое доказательство AST: проверяет, не сломал ли сгенерированный код базовые инварианты."""
+    """Mathematical AST proof: checks if the generated code has broken basic invariants."""
     
     @staticmethod
     def prove(code: str, language: str = "python") -> tuple[bool, str]:
@@ -69,10 +69,10 @@ class ASTInvariantValidator:
             except SyntaxError as e:
                 return False, f"AST Proof Failed: {e}"
         elif language in ["typescript", "javascript", "tsx", "ts"]:
-            # Простейший эвристический инвариант баланса скобок (AST proof surrogate for JS)
+            # The simplest heuristic invariant for bracket balance (AST proof surrogate for JS)
             stack = []
             pairs = {')': '(', '}': '{', ']': '['}
-            # Игнорируем строки и комментарии для грубой проверки
+            # Ignore strings and comments for a rough check
             clean_code = re.sub(r'//.*', '', code)
             clean_code = re.sub(r'/\*.*?\*/', '', clean_code, flags=re.DOTALL)
             clean_code = re.sub(r'(["\'])(?:(?=(\\?))\2.)*?\1', '', clean_code)

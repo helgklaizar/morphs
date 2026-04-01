@@ -1,4 +1,4 @@
-"""Тесты для YOLOClassifier (Task 18)."""
+"""Tests for YOLOClassifier (Task 18)."""
 import pytest
 from core.yolo_classifier import classify_command, YOLOClassifier, RiskLevel
 
@@ -36,7 +36,7 @@ def test_high_curl_pipe_bash():
 
 def test_medium_rm_recursive():
     result = classify_command("rm -rf /tmp/build_artifacts")
-    # rm -rf /tmp/... — не корень, но рекурсивное удаление
+    # rm -rf /tmp/... — not root, but recursive deletion
     assert result.risk_level in (RiskLevel.MEDIUM, RiskLevel.HIGH, RiskLevel.CRITICAL)
     assert result.requires_confirmation or result.is_blocked
 
@@ -53,7 +53,7 @@ def test_medium_chmod_777():
 
 
 def test_safe_echo():
-    clf = YOLOClassifier(use_llm_for_ambiguous=False)  # без LLM в тестах
+    clf = YOLOClassifier(use_llm_for_ambiguous=False)  # without LLM in tests
     result = clf.classify("echo 'hello world'")
     assert result.risk_level == RiskLevel.SAFE
     assert result.is_blocked is False
@@ -78,6 +78,6 @@ def test_categories_populated():
 
 
 def test_multiple_risks_take_highest():
-    # Команда с несколькими рисками — берём наивысший
+    # A command with multiple risks — take the highest one
     result = classify_command("sudo rm -rf /etc/ssl")
     assert result.risk_level in (RiskLevel.HIGH, RiskLevel.CRITICAL)

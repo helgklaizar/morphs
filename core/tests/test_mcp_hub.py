@@ -35,12 +35,12 @@ def test_call_tool(mcp_router):
     mcp_router.active_processes["test_mcp"] = MagicMock()
     mock_proc = mcp_router.active_processes["test_mcp"]
     
-    # Мокаем stdin/stdout
+    # Mock stdin/stdout
     mock_proc.stdin = AsyncMock()
     mock_proc.stdin.write = MagicMock()
     mock_proc.stdout = AsyncMock()
     
-    # Имитируем ответ JSON-RPC
+    # Simulate a JSON-RPC response
     fake_response = {"jsonrpc": "2.0", "result": "success", "id": 1}
     mock_proc.stdout.readline.return_value = (json.dumps(fake_response) + "\n").encode("utf-8")
     

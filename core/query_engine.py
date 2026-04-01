@@ -1,8 +1,8 @@
 """
-QueryEngine — Задача 5: Единый фасад LanceDB (вектора) + Kùzu (граф).
+QueryEngine — Task 5: Unified facade for LanceDB (vectors) + Kùzu (graph).
 
-Унифицирует RAG-запросы под один интерфейс, чтобы вышестоящий код
-не зависел от конкретных SDK lancedb/kuzu.
+Unifies RAG queries under a single interface, so that upstream code
+does not depend on the specific lancedb/kuzu SDKs.
 
 API:
     engine = QueryEngine(workspace_path)
@@ -23,7 +23,7 @@ class VectorResult:
     text: str
     type: str
     path: str
-    score: float  # 1.0 = идеально близко, 0.0 = не похоже
+    score: float  # 1.0 = perfect match, 0.0 = not similar
 
 
 @dataclass
@@ -39,35 +39,35 @@ class HybridResult:
     graph_columns: list[str] = field(default_factory=list)
 
     def to_prompt_context(self) -> str:
-        """Сериализует гибридные результаты в текстовый контекст для LLM-промпта."""
+        """Serializes hybrid results into a text context for an LLM prompt."""
         lines: list[str] = []
 
         if self.vector_results:
-            lines.append("=== СЕМАНТИЧЕСКИ ПОХОЖИЕ УЗЛЫ (LanceDB) ===")
+            lines.append("=== SEMANTICALLY SIMILAR NODES (LanceDB) ===")
             for r in self.vector_results:
                 lines.append(f"[{r.type.upper()}] {r.text}  (score={r.score:.2f}, path={r.path})")
             lines.append("")
 
         if self.graph_results:
-            lines.append("=== ГРАФ ЗАВИСИМОСТЕЙ (Kùzu) ===")
+            lines.append("=== DEPENDENCY GRAPH (Kùzu) ===")
             header = " | ".join(self.graph_columns)
             lines.append(header)
             lines.append("-" * len(header))
             for row in self.graph_results:
                 lines.append(" | ".join(str(c) for c in row))
 
-        return "\n".join(lines) if lines else "Контекст не найден."
+        return "\n".join(lines) if lines else "Context not found."
 
 
 class QueryEngine:
     """
-    Единый фасад для всех запросов к базам знаний проекта.
+    Unified facade for all queries to the project's knowledge bases.
 
-    Внутри координирует:
-    - LanceDB: семантический векторный поиск по коду (sentence-transformers).
-    - Kùzu DB: структурированные запросы к графу зависимостей (Cypher-подобный язык).
+    Internally, it coordinates:
+    - LanceDB: semantic vector search over code (sentence-transformers).
+    - Kùzu DB: structured queries to the dependency graph (Cypher-like language).
 
-    Lazy-инициализация: подключается к базам только при первом запросе.
+    Lazy initialization: connects to databases only on the first request.
     """
 
     def __init__(self, workspace_path: str):
@@ -80,7 +80,7 @@ class QueryEngine:
         self._embed_model = None
 
     # ------------------------------------------------------------------
-    # Внутренние lazy-коннекторы
+    # Internal lazy connectors
     # ------------------------------------------------------------------
 
     def _get_lance_db(self):
@@ -110,26 +110,26 @@ class QueryEngine:
         return self._get_embed_model().encode(text).tolist()
 
     # ------------------------------------------------------------------
-    # Публичный API
+    # Public API
     # ------------------------------------------------------------------
 
     def search(self, query: str, limit: int = 5, table_name: str = "code_index") -> list[VectorResult]:
         """
-        Семантический векторный поиск по LanceDB.
+        Semantic vector search over LanceDB.
 
         Args:
-            query: Текстовый запрос.
-            limit: Максимальное количество результатов.
-            table_name: Имя таблицы в LanceDB (по умолчанию "code_index").
+            query: The text query.
+            limit: The maximum number of results.
+            table_name: The name of the table in LanceDB (default is "code_index").
 
         Returns:
-            Список VectorResult, отсортированных по убыванию релевантности.
+            A list of VectorResult, sorted by descending relevance.
         """
         try:
             db = self._get_lance_db()
             tables = db.list_tables().tables
             if table_name not in tables:
-                logger.warning(f"[QueryEngine] Таблица '{table_name}' не найдена в LanceDB. Запустите CodeLensMorph.build_graph() первым.")
+                logger.warning(f"[QueryEngine] Table '{table_name}' not found in LanceDB. Run CodeLensMorph.build_graph() first.")
                 return []
 
             vector = self._embed(query)
@@ -138,10 +138,10 @@ class QueryEngine:
 
             results: list[VectorResult] = []
             if df.empty:
-                logger.warning(f"[QueryEngine] Векторный поиск вернул пустой DataFrame для '{query}'. Таблица '{table_name}' содержит {table.to_pandas().shape[0]} строк.")
+                logger.warning(f"[QueryEngine] Vector search returned an empty DataFrame for '{query}'. Table '{table_name}' contains {table.to_pandas().shape[0]} rows.")
                 
             for _, row in df.iterrows():
-                # У PyArrow row может быть Series, к которой нельзя применять getattr, используем .get() 
+                # For PyArrow, row can be a Series to which getattr cannot be applied, so we use .get() 
                 distance = float(row.get("_distance", 1.0))
                 score = max(0.0, 1.0 - distance)
                 results.append(VectorResult(
@@ -151,24 +151,24 @@ class QueryEngine:
                     score=score,
                 ))
 
-            logger.info(f"[QueryEngine] Векторный поиск: {len(results)} результатов для запроса '{query[:60]}'")
+            logger.info(f"[QueryEngine] Vector search: {len(results)} results for query '{query[:60]}'")
             return results
 
         except Exception as e:
-            logger.error(f"[QueryEngine] Ошибка векторного поиска: {e}", exc_info=True)
+            logger.error(f"[QueryEngine] Vector search error: {e}", exc_info=True)
             raise
 
     def query_graph(self, cypher: str, parameters: Optional[dict] = None) -> GraphResult:
         """
-        Выполняет Cypher-запрос к Kùzu граф-базе.
+        Executes a Cypher query against the Kùzu graph database.
 
         Args:
-            cypher: Kùzu Cypher-запрос, например:
+            cypher: A Kùzu Cypher query, for example:
                     "MATCH (f:File)-[:CONTAINS_CLASS]->(c) RETURN f.path, c.name LIMIT 20"
-            parameters: Параметры запроса (словарь).
+            parameters: Query parameters (a dictionary).
 
         Returns:
-            GraphResult с именами колонок и строками результата.
+            A GraphResult with column names and result rows.
         """
         try:
             conn = self._get_kuzu_conn()
@@ -180,11 +180,11 @@ class QueryEngine:
             while res.has_next():
                 rows.append(res.get_next())
 
-            logger.info(f"[QueryEngine] Граф-запрос вернул {len(rows)} строк.")
+            logger.info(f"[QueryEngine] Graph query returned {len(rows)} rows.")
             return GraphResult(columns=columns, rows=rows)
 
         except Exception as e:
-            logger.error(f"[QueryEngine] Ошибка Kùzu запроса: {e}", exc_info=True)
+            logger.error(f"[QueryEngine] Kùzu query error: {e}", exc_info=True)
             raise
 
     def hybrid_search(
@@ -194,28 +194,28 @@ class QueryEngine:
         graph_cypher: Optional[str] = None,
     ) -> HybridResult:
         """
-        Гибридный поиск: векторный + граф одновременно.
+        Hybrid search: vector + graph simultaneously.
 
-        По умолчанию граф-запрос возвращает топ-20 файлов с их классами.
-        Можно передать собственный `graph_cypher` для специфических нужд.
+        By default, the graph query returns the top 20 files with their classes.
+        A custom `graph_cypher` can be passed for specific needs.
 
         Args:
-            query: Текстовый запрос.
-            limit: Лимит векторных результатов.
-            graph_cypher: Опциональный Cypher-запрос. Если None — используется дефолтный.
+            query: The text query.
+            limit: The limit for vector results.
+            graph_cypher: An optional Cypher query. If None, a default one is used.
 
         Returns:
-            HybridResult со скомбинированными данными.
+            A HybridResult with the combined data.
         """
         result = HybridResult()
 
-        # 1. Векторный поиск
+        # 1. Vector search
         try:
             result.vector_results = self.search(query, limit=limit)
         except Exception as e:
             logger.error(f"[QueryEngine] Hybrid: vector search failed: {e}")
 
-        # 2. Граф-запрос
+        # 2. Graph query
         try:
             cypher = graph_cypher or (
                 "MATCH (f:File)-[:CONTAINS_CLASS]->(c:ClassNode) "
@@ -233,16 +233,16 @@ class QueryEngine:
 
     def search_experience(self, error_query: str, limit: int = 5) -> list[VectorResult]:
         """
-        Специализированный поиск по Atropos Experience (RL-память ошибок).
+        Specialized search through Atropos Experience (RL error memory).
 
-        Ищет в таблице 'atropos_experience' паттерны, близкие к текущей ошибке.
+        Searches the 'atropos_experience' table for patterns similar to the current error.
 
         Args:
-            error_query: Строка с описанием ошибки или трейсбэком.
-            limit: Количество релевантных воспоминаний.
+            error_query: A string with an error description or traceback.
+            limit: The number of relevant memories.
 
         Returns:
-            Список VectorResult (поле text = ошибка, поле path = зафиксированный патч).
+            A list of VectorResult (text field = error, path field = the recorded patch).
         """
         try:
             db = self._get_lance_db()
@@ -254,7 +254,7 @@ class QueryEngine:
             table = db.open_table("atropos_experience")
             df = table.search(vector).limit(limit).to_pandas()
 
-            # Только положительные опыты (reward > 0)
+            # Only positive experiences (reward > 0)
             df = df[df["reward"] > 0] if "reward" in df.columns else df
 
             results: list[VectorResult] = []
@@ -263,11 +263,11 @@ class QueryEngine:
                 results.append(VectorResult(
                     text=str(row.get("error", "")),
                     type="atropos_experience",
-                    path=str(row.get("fixed_code", ""))[:200],  # патч как "путь"
+                    path=str(row.get("fixed_code", ""))[:200],  # patch as "path"
                     score=max(0.0, 1.0 - distance),
                 ))
             return results
 
         except Exception as e:
-            logger.error(f"[QueryEngine] Ошибка поиска в Atropos Experience: {e}", exc_info=True)
+            logger.error(f"[QueryEngine] Error searching in Atropos Experience: {e}", exc_info=True)
             return []

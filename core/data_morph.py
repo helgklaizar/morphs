@@ -13,7 +13,7 @@ class DataMorph:
         pass
 
     def generate_mock_data(self, router_file_path: str, business_type: str):
-        logger.info(f"🧬 [Data-Morph] Анализирую {router_file_path} для генерации мок-данных...")
+        logger.info(f"🧬 [Data-Morph] Analyzing {router_file_path} to generate mock data...")
         
         # We use the existing mind from main or create a new instance (which is fast if weights are in memory)
         mind = CoreMind()
@@ -24,42 +24,42 @@ class DataMorph:
         module_name = os.path.basename(router_file_path)[:-3]
             
         prompt = f"""
-Ты Data-Morph. Твоя задача: наполнить базу данных реалистичными данными (Mock Data).
-Вот сгенерированный код FastAPI роутера (SQLAlchemy) для бизнеса "{business_type}":
+You are Data-Morph. Your task is to populate the database with realistic data (Mock Data).
+Here is the generated FastAPI router code (SQLAlchemy) for a "{business_type}" business:
 
 ```python
 {router_code}
 ```
 
-Напиши скрипт на Python, который генерирует 50 красивых, реалистичных, осмысленных записей для КАЖДОЙ таблицы, найденной в этом коде, и сохраняет их в БД.
-Используй ТОЛЬКО стандартные библиотеки (random, datetime, uuid, string). Придумай массивы с красивыми реалистичными названиями для генерации.
+Write a Python script that generates 50 beautiful, realistic, meaningful records for EACH table found in this code and saves them to the database.
+Use ONLY standard libraries (random, datetime, uuid, string). Come up with arrays of beautiful, realistic names for generation.
 
-Правила для скрипта:
-1. Он должен лежать в той же папке, что и роутер.
-2. Сделай импорт нужных классов SQLAlchemy и объекта `session` прямо из модуля `{module_name}`.
-Например: `from {module_name} import session, CafeTable` (смотри как таблицы называются в коде).
-3. Добавь вызов commit(): `session.commit()`.
-4. Верни ТОЛЬКО чистый Python код без Markdown разметки. БЕЗ оберток ```python ```.
-5. Обязательно вставь блок `if __name__ == '__main__':`!
+Rules for the script:
+1. It must be in the same folder as the router.
+2. Import the necessary SQLAlchemy classes and the `session` object directly from the `{module_name}` module.
+For example: `from {module_name} import session, CafeTable` (see what the tables are named in the code).
+3. Add a commit() call: `session.commit()`.
+4. Return ONLY pure Python code without Markdown formatting. WITHOUT ```python ``` wrappers.
+5. Be sure to include an `if __name__ == '__main__':` block!
 """
         schema = (
             "<thought>\n"
-            "Здесь распиши пошагово: какие классы таблиц импортировать, как создавать фейковые записи и коммитить их.\n"
+            "Here, describe step-by-step: which table classes to import, how to create fake records, and how to commit them.\n"
             "</thought>\n"
             "<code>\n"
-            "Здесь СТРОГО финальный чистый Python код скрипта, готовый к исполнению.\n"
+            "Here, STRICTLY the final, clean Python script code, ready for execution.\n"
             "</code>"
         )
         
-        logger.info("⚡️ [Data-Morph] Пишу скрипт наполнения БД (structured)...")
+        logger.info("⚡️ [Data-Morph] Writing DB population script (structured)...")
         result = mind.think_structured(prompt, schema, max_tokens=2048)
-        logger.info(f"🤔 [Data-Morph Мысль]: {result.get('thought', 'Нет мыслей')}")
+        logger.info(f"🤔 [Data-Morph Thought]: {result.get('thought', 'No thoughts')}")
         
         script_code = result.get("code", "")
-        # Очистка хвостов (на всякий случай)
+        # Clean up trailing characters (just in case)
         script_code = script_code.replace("```python", "").replace("```", "").strip()
         
-        logger.info("🚀 [Data-Morph] Валидация безопасности скрипта (AST-Sandbox)...")
+        logger.info("🚀 [Data-Morph] Validating script security (AST-Sandbox)...")
         
         # 🛡️ Point 3: Secure Sandbox (AST Scanning)
         import ast
@@ -70,20 +70,20 @@ class DataMorph:
                 if isinstance(node, ast.Import):
                     for name in node.names:
                         if name.name.split('.')[0] in banned_modules:
-                            raise ValueError(f"Галлюцинация: ИИ попытался импортировать опасный модуль '{name.name}'!")
+                            raise ValueError(f"Hallucination: The AI tried to import a dangerous module '{name.name}'!")
                 elif isinstance(node, ast.ImportFrom):
                     if node.module and node.module.split('.')[0] in banned_modules:
-                        raise ValueError(f"Галлюцинация: ИИ попытался импортировать из '{node.module}'!")
-            logger.info("✅ [AST-Sandbox] Скрипт безопасен. Зловредного импорта не найдено.")
+                        raise ValueError(f"Hallucination: The AI tried to import from '{node.module}'!")
+            logger.info("✅ [AST-Sandbox] Script is safe. No malicious imports found.")
         except Exception as e:
-            logger.info(f"❌ [AST-Sandbox] Угроза безопасности! Скрипт отбракован: {e}")
+            logger.info(f"❌ [AST-Sandbox] Security threat! Script rejected: {e}")
             return
             
         script_path = os.path.join(os.path.dirname(router_file_path), f"seed_{module_name}.py")
         with open(script_path, "w") as f:
             f.write(script_code)
             
-        logger.info(f"🚀 [Data-Morph] Запускаю скрипт посева данных: {script_path}...")
+        logger.info(f"🚀 [Data-Morph] Running data seeding script: {script_path}...")
         
         # Add routers/ to PYTHONPATH so the import works
         env = os.environ.copy()
@@ -94,9 +94,9 @@ class DataMorph:
         # Run from core directory so 'sqlite:///name.db' is created in core
         result = subprocess.run(["python", script_path], cwd=core_dir, env=env, capture_output=True, text=True)
         if result.returncode == 0:
-            logger.info(f"✅ [Data-Morph] Успешно! База данных заполнена. Вывод: {result.stdout}")
+            logger.info(f"✅ [Data-Morph] Success! Database populated. Output: {result.stdout}")
         else:
-            logger.info(f"❌ [Data-Morph] Ошибка при заполнении: {result.stderr}")
+            logger.info(f"❌ [Data-Morph] Error during population: {result.stderr}")
             # Optional: We could call HealerMorph here if we wanted!
 
 if __name__ == "__main__":

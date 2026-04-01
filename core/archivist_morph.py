@@ -6,12 +6,12 @@ from core.logger import logger
 class ArchivistMorph:
     def __init__(self):
         self.mind = CoreMind()
-        logger.info("📚 [Archivist-Morph] Проснулся. Проверяю переполнение локальной памяти...")
+        logger.info("📚 [Archivist-Morph] Woke up. Checking for local memory overflow...")
 
     def fold_memory(self):
         """
-        Проверяет папку blueprints и json-файлы.
-        Если они слишком большие, сжимает историю в bullet-points.
+        Checks the blueprints folder and json files.
+        If they are too large, it compresses the history into bullet-points.
         """
         blueprints_dir = "../blueprints"
         if not os.path.exists(blueprints_dir):
@@ -26,35 +26,35 @@ class ArchivistMorph:
                 with open(filepath, "r") as f:
                     content = f.read()
             except Exception as e:
-                logger.info(f"⚠️ [Archivist] Ошибка открытия {filename}: {e}")
+                logger.info(f"⚠️ [Archivist] Error opening {filename}: {e}")
                 continue
 
-            # Memory Folding Logic: Если контекст разросся
+            # Memory Folding Logic: If the context has grown too large
             if len(content) > 3000:
-                logger.info(f"🧹 [Archivist-Morph] Файл {filename} слишком большой ({len(content)} байт). Начинаю компрессию (Memory Folding)...")
+                logger.info(f"🧹 [Archivist-Morph] File {filename} is too large ({len(content)} bytes). Starting compression (Memory Folding)...")
                 
                 prompt = (
-                    f"Ты Архивист. Сожми этот лог работы агентов в максимально короткие и емкие bullet-points.\n"
-                    f"Оставь ТОЛЬКО суть: архитектуру, пути API, названия таблиц и ключи. Удали всю воду.\n"
-                    f"ИСТОДНИК:\n{content}"
+                    f"You are an Archivist. Compress this agent work log into the shortest and most concise bullet-points possible.\n"
+                    f"Leave ONLY the essence: architecture, API paths, table names, and keys. Remove all fluff.\n"
+                    f"SOURCE:\n{content}"
                 )
                 
                 schema = (
-                    "<thought>Пиши что хочешь</thought>\n"
-                    "<code>Здесь сжатый JSON с ключевыми метриками (keys, endpoints, architecture)</code>"
+                    "<thought>Write whatever you want</thought>\n"
+                    "<code>Here is the compressed JSON with key metrics (keys, endpoints, architecture)</code>"
                 )
                 
                 result = self.mind.think_structured(prompt, schema, max_tokens=1000, expert_adapter="archivist")
                 compressed_json_str = result.get("code", "")
                 
-                # Сохраняем обратно как мини-слепок
+                # Saving back as a mini-snapshot
                 try:
                     compressed_json = json.loads(compressed_json_str)
                     with open(filepath, "w") as f:
                         json.dump(compressed_json, f, indent=4)
-                    logger.info(f"📦 [Archivist-Morph] Успех! Файл {filename} сжат. Освобождено токенов ИИ-контекста.")
+                    logger.info(f"📦 [Archivist-Morph] Success! File {filename} is compressed. AI context tokens have been freed.")
                 except Exception as e:
-                    logger.info(f"⚠️ [Archivist-Morph] Ошибка парсинга сжатого JSON, пропускаю. {e}")
+                    logger.info(f"⚠️ [Archivist-Morph] Error parsing compressed JSON, skipping. {e}")
             else:
                 pass
 

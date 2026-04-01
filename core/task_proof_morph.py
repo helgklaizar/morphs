@@ -5,12 +5,12 @@ from core.logger import logger
 class TaskProofMorph:
     """
     Local Evidence-Driven Workflow.
-    Управляет папками-аудитами (Durable Task Folders) для задач.
-    Реализует концепции:
-    1. Изолированные Task Folders
-    2. Заморозка спецификации (Spec Freeze)
-    3. Эфемерные роли под задачу (Task-Scoped Subagents)
-    4. Доказательный пайплайн (Evidence Collection)
+    Manages audit folders (Durable Task Folders) for tasks.
+    Implements the following concepts:
+    1. Isolated Task Folders
+    2. Specification Freezing (Spec Freeze)
+    3. Task-Scoped Ephemeral Roles (Task-Scoped Subagents)
+    4. Evidence-Based Pipeline (Evidence Collection)
     """
     def __init__(self, workspace_dir: str):
         self.workspace_dir = os.path.abspath(workspace_dir)
@@ -21,7 +21,7 @@ class TaskProofMorph:
         return os.path.join(self.tasks_dir, task_id)
 
     def init_task(self, task_id: str, original_spec: str) -> str:
-        """1. Создание папки-аудита и инициализация спеки."""
+        """1. Create an audit folder and initialize the spec."""
         folder = self.get_task_folder(task_id)
         os.makedirs(folder, exist_ok=True)
         os.makedirs(os.path.join(folder, "evidence"), exist_ok=True)
@@ -32,66 +32,66 @@ class TaskProofMorph:
             f.write("# Task Specification\n\n")
             f.write(original_spec)
             
-        logger.info(f"📁 [TaskProof-Morph] Папка задачи инициализирована: {folder}")
+        logger.info(f"📁 [TaskProof-Morph] Task folder initialized: {folder}")
         return folder
 
     def freeze_spec(self, task_id: str) -> str:
-        """2. Заморозка спецификации (Spec Freeze). Читаем и фиксируем."""
+        """2. Specification Freezing (Spec Freeze). Read and fixate."""
         spec_path = os.path.join(self.get_task_folder(task_id), "spec.md")
         if not os.path.exists(spec_path):
-            raise FileNotFoundError("Спецификация не найдена!")
+            raise FileNotFoundError("Specification not found!")
             
-        # В реальной Linux системе можно сделать os.chmod(spec_path, 0o444) 
-        # для защиты от перезаписи.
+        # In a real Linux system, you could use os.chmod(spec_path, 0o444) 
+        # to make it read-only.
         with open(spec_path, "r", encoding="utf-8") as f:
             frozen_spec = f.read()
             
-        logger.info(f"❄️ [TaskProof-Morph] Спецификация заморожена для {task_id}. Никаких галлюцинаций.")
+        logger.info(f"❄️ [TaskProof-Morph] Specification frozen for {task_id}. No more hallucinations.")
         return frozen_spec
 
     def generate_subagent_prompts(self, task_id: str, context: str):
-        """3. Эфемерные роли под задачу (Task-Scoped Subagents)."""
+        """3. Task-Scoped Ephemeral Roles (Task-Scoped Subagents)."""
         agents_folder = os.path.join(self.get_task_folder(task_id), ".agents")
         
-        # Инструкция для Coder
-        coder_prompt = f"""# Замороженный контекст для кодера
-Вся архитектура и зависимости для твоей работы:
+        # Instructions for the Coder
+        coder_prompt = f"""# Frozen context for the coder
+The entire architecture and dependencies for your work:
 {context}
 
-Твоя единственная цель: реализовать spec.md. Шаг влево, шаг вправо = провал.
+Your sole purpose is to implement spec.md. Any deviation is a failure.
 """
         with open(os.path.join(agents_folder, "task-builder.md"), "w", encoding="utf-8") as f:
             f.write(coder_prompt)
             
-        # Инструкция для Архитектора
-        reviewer_prompt = """# Замороженный контекст для Архитектора
-Ты должен проверить код строго по спецификации (spec.md) и собранным доказательствам (evidence/).
-Если нет файла evidence/build.txt или тесты не пройдены, ТЫ НЕ ИМЕЕШЬ ПРАВА ПРОПУСКАТЬ КОД.
+        # Instructions for the Architect
+        reviewer_prompt = """# Frozen context for the Architect
+You must review the code strictly according to the specification (spec.md) and the collected evidence (evidence/).
+If the evidence/build.txt file is missing or the tests have not passed, YOU ARE NOT ALLOWED TO APPROVE THE CODE.
 """
         with open(os.path.join(agents_folder, "task-reviewer.md"), "w", encoding="utf-8") as f:
             f.write(reviewer_prompt)
             
-        logger.info(f"🎭 [TaskProof-Morph] Локальные системные промпты сгенерированы в {agents_folder}")
+        logger.info(f"🎭 [TaskProof-Morph] Local system prompts generated in {agents_folder}")
 
     def collect_evidence(self, task_id: str, filename: str, content: str):
-        """4. Доказательный пайплайн. Сбор логов, багов, результатов тестов."""
+        """4. Evidence-based pipeline. Collect logs, bugs, test results."""
         evidence_folder = os.path.join(self.get_task_folder(task_id), "evidence")
         path = os.path.join(evidence_folder, filename)
         
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
             
-        logger.info(f"💼 [TaskProof-Morph] Добавлено доказательство: {filename}")
+        logger.info(f"💼 [TaskProof-Morph] Evidence added: {filename}")
         
     def write_verdict(self, task_id: str, verdict_data: dict):
-        """Финальный вердикт."""
+        """Final verdict."""
         folder = self.get_task_folder(task_id)
         with open(os.path.join(folder, "verdict.json"), "w", encoding="utf-8") as f:
             json.dump(verdict_data, f, indent=4, ensure_ascii=False)
-        logger.info(f"⚖️ [TaskProof-Morph] Вердикт вынесен: {verdict_data.get('status')}")
+        logger.info(f"⚖️ [TaskProof-Morph] Verdict rendered: {verdict_data.get('status')}")
         
     def verify_ready_for_review(self, task_id: str) -> bool:
-        """Архитектор запрашивает: готовы ли пруфы?"""
+        """The Architect asks: is the proof ready?"""
         evidence_folder = os.path.join(self.get_task_folder(task_id), "evidence")
         build_log = os.path.join(evidence_folder, "build.txt")
         if not os.path.exists(build_log):

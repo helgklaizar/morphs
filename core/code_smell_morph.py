@@ -3,9 +3,9 @@ from core.logger import logger
 
 class CodeSmellMorph:
     """
-    Пункт 4: Code-Smell Analyzer (Метрики ТехДолга)
-    Измеряет Цикломатическую сложность (McCabe Complexity) новых функций.
-    Если ИИ написал монстра на 15 if/else — транзакция откатывается.
+    Item 4: Code-Smell Analyzer (Technical Debt Metrics)
+    Measures the Cyclomatic Complexity (McCabe Complexity) of new functions.
+    If the AI writes a monster with 15 if/else statements, the transaction is rolled back.
     """
     def __init__(self, max_complexity: int = 15):
         self.max_complexity = max_complexity
@@ -24,8 +24,8 @@ class CodeSmellMorph:
 
     def analyze_python_code(self, code: str) -> dict:
         """
-        Парсит AST и рассчитывает сложность для каждой функции/класса.
-        Возвращает: {"is_clean": bool, "violators": [details...]}
+        Parses the AST and calculates the complexity for each function/class.
+        Returns: {"is_clean": bool, "violators": [details...]}
         """
         violators = []
         try:
@@ -45,9 +45,9 @@ class CodeSmellMorph:
             is_clean = len(violators) == 0
             
             if not is_clean:
-                logger.info(f"🛑 [CodeSmell-Morph] Обнаружен ТехДолг! {len(violators)} функций превышают лимит сложности {self.max_complexity}.")
+                logger.info(f"🛑 [CodeSmell-Morph] Technical Debt detected! {len(violators)} functions exceed the complexity limit of {self.max_complexity}.")
             else:
-                logger.info(f"✅ [CodeSmell-Morph] Код чистый. Цикломатическая сложность в норме (до {self.max_complexity}).")
+                logger.info(f"✅ [CodeSmell-Morph] The code is clean. Cyclomatic complexity is within the normal range (up to {self.max_complexity}).")
                 
             return {
                 "is_clean": is_clean,
@@ -55,6 +55,6 @@ class CodeSmellMorph:
             }
             
         except SyntaxError as e:
-            # Если синтаксис битый, мы не можем измерить сложность.
-            # Оставляем это Healer-Morph'у
+            # If the syntax is broken, we cannot measure the complexity.
+            # Leaving this for the Healer-Morph.
             return {"is_clean": False, "violators": [{"type": "syntax_error", "name": "SyntaxError", "complexity": 999, "line": getattr(e, "lineno", 0)}]}

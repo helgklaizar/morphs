@@ -4,20 +4,20 @@ from core.logger import logger
 
 class DeployMorph:
     """
-    Инфраструктурный DevSecOps Агент. Умеет паковать Morphs-OS и SaaS бизнесы
-    в артефакты: Docker/docker-compose для Production запуска.
+    Infrastructure DevSecOps Agent. Knows how to package Morphs-OS and SaaS businesses
+    into artifacts: Docker/docker-compose for Production launch.
     """
 
     def _extract_dependencies(self, workspace_dir: str) -> None:
         """
-        Заглушка: Модуль теперь не ПАРСИТ файлы через ast,
-        а требует наличия requirements.txt / package.json от Coder-агента.
-        Если их нет, создает базовый набор.
+        Stub: The module no longer PARSES files via ast,
+        but requires the presence of requirements.txt / package.json from the Coder agent.
+        If they are not present, it creates a basic set.
         """
         pass
 
     def generate_deploy_artifacts(self, workspace_dir: str, project_name: str):
-        logger.info(f"🐳 [Deploy-Morph] Динамическое определение инфра-ресурсов (DevOps) для {project_name} в {workspace_dir}...")
+        logger.info(f"🐳 [Deploy-Morph] Dynamically defining infra-resources (DevOps) for {project_name} in {workspace_dir}...")
         
         os.makedirs(workspace_dir, exist_ok=True)
         backend_dir = os.path.join(workspace_dir, "backend")
@@ -27,7 +27,7 @@ class DeployMorph:
         
         from config import settings
         
-        # 1. Сборка Dockerfile для Бэкенда (Автоопределение стека)
+        # 1. Building Dockerfile for the Backend (Auto-detecting stack)
         requirements_path = os.path.join(backend_dir, "requirements.txt")
         package_json_path = os.path.join(backend_dir, "package.json")
         
@@ -50,14 +50,14 @@ WORKDIR /app
 COPY backend/package*.json ./
 RUN npm install --production
 COPY backend/ .
-# Производственный запуск Node.js {project_name}
+# Production launch of Node.js {project_name}
 CMD {json.dumps(start_cmd.split())}
 """
         else:
-            # Fallback на Python
+            # Fallback to Python
             has_reqs = os.path.exists(requirements_path)
             
-            # Ищем точку входа для uvicorn
+            # Looking for the entry point for uvicorn
             main_module = "main:app"
             if os.path.exists(backend_dir):
                 for file in os.listdir(backend_dir):
@@ -73,7 +73,7 @@ CMD {json.dumps(start_cmd.split())}
 WORKDIR /app
 COPY backend/ .
 {reqs_cmd}
-# Производственный запуск FastAPI {project_name}
+# Production launch of FastAPI {project_name}
 CMD ["uvicorn", "{main_module}", "--host", "0.0.0.0", "--port", "{settings.SAAS_BACKEND_PORT}"]
 """
         
@@ -81,7 +81,7 @@ CMD ["uvicorn", "{main_module}", "--host", "0.0.0.0", "--port", "{settings.SAAS_
         with open(docker_path, "w", encoding="utf-8") as f:
             f.write(dockerfile)
             
-        # 2. Сборка docker-compose.yml (Комбайн)
+        # 2. Building docker-compose.yml (Combine)
         compose_config = {
             "version": "3.8",
             "services": {
@@ -104,40 +104,40 @@ CMD ["uvicorn", "{main_module}", "--host", "0.0.0.0", "--port", "{settings.SAAS_
         with open(compose_path, "w", encoding="utf-8") as f:
             yaml.dump(compose_config, f, default_flow_style=False, allow_unicode=True)
             
-        logger.info("✅ [Deploy-Morph] Docker-кластер артефакты (Dockerfile + Compose) написаны! Готовы к `docker compose up`.")
+        logger.info("✅ [Deploy-Morph] Docker cluster artifacts (Dockerfile + Compose) have been written! Ready for `docker compose up`.")
         return compose_path
 
     async def deploy_to_local_registry(self, workspace_dir: str):
         """
-        Фактический запуск SaaS-бизнеса в локальном Docker.
-        Выполняет 'docker compose up -d --build' через BashHarness.
+        Actual launch of the SaaS business in local Docker.
+        Executes 'docker compose up -d --build' via BashHarness.
         """
         from bash_harness import BashHarness, BashCommandInput
-        logger.info(f"🚀 [Deploy-Morph] Инициирую деплой в Docker через Sandboxed BashHarness: {workspace_dir}...")
+        logger.info(f"🚀 [Deploy-Morph] Initiating deployment to Docker via Sandboxed BashHarness: {workspace_dir}...")
         
         compose_path = os.path.join(workspace_dir, "docker-compose.yml")
         if not os.path.exists(compose_path):
-            raise FileNotFoundError(f"docker-compose.yml не найден в {workspace_dir}!")
+            raise FileNotFoundError(f"docker-compose.yml not found in {workspace_dir}!")
             
         harness = BashHarness()
         cmd_input = BashCommandInput(
             command="docker compose up -d --build",
             cwd=workspace_dir,
-            timeout=600,  # 10 минут на сборку Docker
-            dangerously_disable_sandbox=True # Разрешаем докеру использовать пути
+            timeout=600,  # 10 minutes for Docker build
+            dangerously_disable_sandbox=True # Allow docker to use paths
         )
         
         try:
             result = await harness.execute(cmd_input)
             
             if result.return_code == 0:
-                logger.info("✅ [Deploy-Morph] Проект успешно развернут! Контейнеры поднимаются.")
+                logger.info("✅ [Deploy-Morph] Project successfully deployed! Containers are starting up.")
                 return True
             else:
-                logger.error(f"❌ [Deploy-Morph] Ошибка при старте Docker: {result.stderr}")
+                logger.error(f"❌ [Deploy-Morph] Error starting Docker: {result.stderr}")
                 return False
         except Exception as e:
-            logger.error(f"❌ [Deploy-Morph] Критическая ошибка песочницы: {str(e)}", exc_info=True)
+            logger.error(f"❌ [Deploy-Morph] Critical sandbox error: {str(e)}", exc_info=True)
             return False
 
 if __name__ == "__main__":

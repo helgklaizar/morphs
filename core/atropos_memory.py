@@ -6,8 +6,8 @@ from core.logger import logger
 
 class AtroposMemory:
     """
-    Интерфейс для Atropos Experience Replay через LanceDB (Векторный поиск прошлого опыта). 
-    Заменяет atropos_memory.json.
+    Interface for Atropos Experience Replay via LanceDB (Vector search of past experience).
+    Replaces atropos_memory.json.
     """
     def __init__(self, db_path=".lancedb"):
         self.db_path = os.path.abspath(db_path)
@@ -55,7 +55,7 @@ class AtroposMemory:
                 "reward": int(reward)
             }]
             table.add(data)
-            logger.info(f"💾 [Atropos] Опыт успешно сохранен. Reward: {reward}")
+            logger.info(f"💾 [Atropos] Experience successfully saved. Reward: {reward}")
         except BaseException as e:
             logger.error(f"Error recording experience: {e}", exc_info=False)
             raise RuntimeError(f"RL loop broken: Cannot record experience: {e}")
@@ -71,7 +71,7 @@ class AtroposMemory:
             
             lessons = []
             for _, row in successes.iterrows():
-                lessons.append(f"ОШИБКА: {row['error']}. ПАТЧ: {row['fixed_code'][:200]}...")
+                lessons.append(f"ERROR: {row['error']}. PATCH: {row['fixed_code'][:200]}...")
                 
             return "\n".join(lessons)
         except BaseException as e:

@@ -31,20 +31,20 @@ def test_full_business_pipeline(mock_generate_orm, mock_gemini, mock_heal, mock_
 
 
 
-    # Имитируем запрос от фронтенда
+    # Simulate a request from the frontend
     request = SetupRequest(
         business_type="Smart Coffee Shop",
         modules=["inventory", "pos"]
     )
     
-    # В обход Redis EventBus вызываем напрямую on_task_created чтобы дождаться ответа в тесте
+    # Bypassing Redis EventBus, we call on_task_created directly to wait for the response in the test
     payload = {
         "task_id": "gen_test",
         "business_type": request.business_type,
         "message": " ".join(request.modules)
     }
     
-    # Мокаем EventBus чтобы он рекурсивно вызывал следующие обработчики вместо отправки в Redis
+    # Mock EventBus so it recursively calls the next handlers instead of sending to Redis
     async def mock_publish(event, payload_data):
         if event == "swarm.backend.generated":
             await swarm_orchestrator.on_backend_generated(payload_data)
@@ -65,13 +65,13 @@ def test_full_business_pipeline(mock_generate_orm, mock_gemini, mock_heal, mock_
     wm = WorkspaceManager()
     project_dir = os.path.join(wm.base_dir, project_slug)
     
-    assert os.path.exists(project_dir), "Оркестратор не создал папку проекта!"
+    assert os.path.exists(project_dir), "Orchestrator did not create the project folder!"
     
-    # Blueprints должно было сохраниться
+    # Blueprints should have been saved
     state_file = "blueprints/smartcoffeeshop_state.json"
-    assert os.path.exists(state_file), "Состояние (Blueprint) не сохранено!"
+    assert os.path.exists(state_file), "State (Blueprint) was not saved!"
     
-    logger.info("✅ [E2E Orchestrator Test] Конвейер отработал безупречно! Воркспейс и бэкенд подняты.")
+    logger.info("✅ [E2E Orchestrator Test] The pipeline ran flawlessly! Workspace and backend are up.")
     
     # Cleanup
     if os.path.exists(project_dir):

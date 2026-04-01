@@ -4,9 +4,9 @@ from core.logger import logger
 
 class GitMorph:
     """
-    Система контроля версий (Кнопка 'Отмена' для генераций).
-    Как только ИИ пишет код, Git-Morph делает commit. При неудаче - revert.
-    Гарантирует, что бизнес-проект никогда не будет сломан навсегда.
+    Version control system ('Undo' button for generations).
+    As soon as the AI writes code, Git-Morph makes a commit. On failure - revert.
+    Ensures that the business project will never be permanently broken.
     """
     def __init__(self, workspace_path: str):
         self.workspace_path = workspace_path
@@ -21,12 +21,12 @@ class GitMorph:
         subprocess.run(["git", "add", "."], cwd=self.workspace_path, capture_output=True)
         res = subprocess.run(["git", "commit", "-m", message], cwd=self.workspace_path, capture_output=True)
         if res.returncode == 0:
-            logger.info(f"📦 [Git-Morph] AI Закоммитил изменения: {message}")
+            logger.info(f"📦 [Git-Morph] AI has committed the changes: {message}")
             return True
         return False
         
     def rollback(self) -> bool:
-        """Откат последнего ИИ-коммита, если Pytest или UI-билд сломался (или по просьбе юзера)"""
-        logger.info("⏪ [Git-Morph] Критический баг. Запускаю откат (git reset --hard HEAD~1)...")
+        """Rollback of the last AI-commit if Pytest or UI-build failed (or at the user's request)"""
+        logger.info("⏪ [Git-Morph] Critical bug. Initiating rollback (git reset --hard HEAD~1)...")
         res = subprocess.run(["git", "reset", "--hard", "HEAD~1"], cwd=self.workspace_path, capture_output=True)
         return res.returncode == 0

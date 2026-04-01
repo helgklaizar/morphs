@@ -1,21 +1,21 @@
 """
-SystemReminder — Задачи 19 & 21: Invisible Tags & Behavioral Correction.
+SystemReminder — Tasks 19 & 21: Invisible Tags & Behavioral Correction.
 
-Механика:
-  1. Инжектирует скрытые <system-reminder> теги внутрь вывода инструментов
-     перед передачей в LLM. LLM читает их как бихейвиоральные директивы.
-  2. Автоматически подбирает релевантные напоминания по контексту вывода
-     (через keyword matching).
-  3. Никогда не показывает эти теги конечному пользователю (invisible).
+Mechanics:
+  1. Injects hidden <system-reminder> tags into tool outputs
+     before passing them to the LLM. The LLM reads them as behavioral directives.
+  2. Automatically selects relevant reminders based on the output context
+     (via keyword matching).
+  3. Never shows these tags to the end user (invisible).
 
-Применение:
+Usage:
     reminder = SystemReminder()
     enriched_output = reminder.inject(tool_stdout, source="bash_harness")
-    # enriched_output содержит <system-reminder>...</system-reminder> блоки
-    # которые LLM воспримет как поведенческую директиву
+    # enriched_output contains <system-reminder>...</system-reminder> blocks
+    # that the LLM will interpret as a behavioral directive
 
-Интеграция:
-    Вызывать ПОСЛЕ InjectionGuard.scan() и ПЕРЕД передачей в LLM-промпт.
+Integration:
+    Call AFTER InjectionGuard.scan() and BEFORE passing to the LLM prompt.
 """
 from __future__ import annotations
 
@@ -27,15 +27,15 @@ from core.logger import logger
 
 
 # ===========================================================================
-# Библиотека напоминаний
+# Reminder Library
 # ===========================================================================
 
 @dataclass
 class Reminder:
     id: str
     content: str
-    triggers: list[str]  # ключевые слова для активации
-    priority: int = 5    # 1 (высший) – 10 (низший)
+    triggers: list[str]  # keywords for activation
+    priority: int = 5    # 1 (highest) – 10 (lowest)
 
 
 _REMINDER_LIBRARY: list[Reminder] = [
@@ -43,9 +43,9 @@ _REMINDER_LIBRARY: list[Reminder] = [
     Reminder(
         id="no_speculation",
         content=(
-            "CONTRACT-01 ACTIVE: Ты видишь вывод инструмента. "
-            "Не добавляй фичи вне scope текущей задачи. "
-            "Не расширяй код за пределы того, что явно запрошено."
+            "CONTRACT-01 ACTIVE: You are seeing tool output. "
+            "Do not add features outside the scope of the current task. "
+            "Do not expand the code beyond what is explicitly requested."
         ),
         triggers=["function", "def ", "class ", "module", "import"],
         priority=3,
@@ -53,9 +53,9 @@ _REMINDER_LIBRARY: list[Reminder] = [
     Reminder(
         id="no_new_files",
         content=(
-            "CONTRACT-02 ACTIVE: Перед созданием нового файла убедись, "
-            "что ни один существующий файл не подходит для размещения этого кода. "
-            "Предпочитай редактирование созданию."
+            "CONTRACT-02 ACTIVE: Before creating a new file, make sure "
+            "that no existing file is suitable for placing this code. "
+            "Prefer editing over creating."
         ),
         triggers=["create", "new file", "touch ", "open(", "with open"],
         priority=3,
@@ -64,9 +64,9 @@ _REMINDER_LIBRARY: list[Reminder] = [
     Reminder(
         id="no_silent_except",
         content=(
-            "CONTRACT-03 ACTIVE: Ты обрабатываешь код. "
-            "ЗАПРЕЩЕНО писать 'except Exception: pass' или 'except: pass' в бизнес-логике. "
-            "Исключения должны propagate через raise или typed error."
+            "CONTRACT-03 ACTIVE: You are processing code. "
+            "It is FORBIDDEN to write 'except Exception: pass' or 'except: pass' in business logic. "
+            "Exceptions must propagate via raise or a typed error."
         ),
         triggers=["try:", "except", "exception", "error handling"],
         priority=2,
@@ -75,10 +75,10 @@ _REMINDER_LIBRARY: list[Reminder] = [
     Reminder(
         id="owasp_sql",
         content=(
-            "CONTRACT-04 ACTIVE: Ты видишь SQL или ORM код. "
-            "ОБЯЗАТЕЛЬНО используй параметризованные запросы. "
-            "Никогда не интерполируй user input в SQL строки. "
-            "Если сомневаешься — добавь # AUDIT-NEEDED: SQLi."
+            "CONTRACT-04 ACTIVE: You are seeing SQL or ORM code. "
+            "You MUST use parameterized queries. "
+            "Never interpolate user input into SQL strings. "
+            "If in doubt, add # AUDIT-NEEDED: SQLi."
         ),
         triggers=["sql", "select ", "insert ", "update ", "delete ", "execute(", "query("],
         priority=2,
@@ -86,10 +86,10 @@ _REMINDER_LIBRARY: list[Reminder] = [
     Reminder(
         id="owasp_xss",
         content=(
-            "CONTRACT-04b ACTIVE: Ты видишь HTML/JS код. "
-            "ОБЯЗАТЕЛЬНО экранируй выводимые данные. "
-            "Добавь Content-Security-Policy заголовок. "
-            "Не используй innerHTML с user data без санитизации."
+            "CONTRACT-04b ACTIVE: You are seeing HTML/JS code. "
+            "You MUST escape output data. "
+            "Add a Content-Security-Policy header. "
+            "Do not use innerHTML with user data without sanitization."
         ),
         triggers=["html", "innerhtml", "dangerouslysetinnerhtml", "render(", "jsx", "tsx", "template"],
         priority=2,
@@ -98,9 +98,9 @@ _REMINDER_LIBRARY: list[Reminder] = [
     Reminder(
         id="reversibility_destructive",
         content=(
-            "CONTRACT-05 ACTIVE: Ты собираешься выполнить потенциально деструктивное действие. "
-            "Классифицируй: REMOTE_DESTRUCTIVE (запись в БД, деплой, удаление, S3/GCS)? "
-            "Если да — вызови confirm_destructive_command() ПЕРЕД исполнением."
+            "CONTRACT-05 ACTIVE: You are about to perform a potentially destructive action. "
+            "Classify: REMOTE_DESTRUCTIVE (DB write, deploy, delete, S3/GCS)? "
+            "If yes, call confirm_destructive_command() BEFORE execution."
         ),
         triggers=["delete", "drop ", "truncate", "deploy", "upload", "rm -", "push", "write", "s3://", "gcs://"],
         priority=1,
@@ -108,8 +108,8 @@ _REMINDER_LIBRARY: list[Reminder] = [
     Reminder(
         id="reversibility_db_write",
         content=(
-            "CONTRACT-05b ACTIVE: Операция записи в базу данных обнаружена. "
-            "Это REMOTE_DESTRUCTIVE. Требуется confirm_destructive_command() перед исполнением."
+            "CONTRACT-05b ACTIVE: A database write operation has been detected. "
+            "This is REMOTE_DESTRUCTIVE. confirm_destructive_command() is required before execution."
         ),
         triggers=["commit(", "session.add", "db.execute", "cursor.execute", ".save(", ".create(", "insert into"],
         priority=1,
@@ -118,8 +118,8 @@ _REMINDER_LIBRARY: list[Reminder] = [
     Reminder(
         id="stay_on_task",
         content=(
-            "SCOPE REMINDER: Фокусируйся только на той части кода, которая относится к текущей задаче. "
-            "Не рефакторь окружающий код опционально."
+            "SCOPE REMINDER: Focus only on the part of the code that relates to the current task. "
+            "Do not refactor surrounding code optionally."
         ),
         triggers=["refactor", "cleanup", "improve", "optimize", "while we're here"],
         priority=4,
@@ -129,14 +129,14 @@ _REMINDER_LIBRARY: list[Reminder] = [
 
 class SystemReminder:
     """
-    Инжектор скрытых поведенческих директив в tool outputs.
+    Injector for hidden behavioral directives into tool outputs.
 
-    Работает по принципу: сканирует вывод инструмента на ключевые слова,
-    подбирает релевантные напоминания и вставляет их в конец блока
-    в виде XML тегов <system-reminder>...</system-reminder>.
+    It works by scanning the tool output for keywords, selecting relevant
+    reminders, and inserting them at the end of the block as XML tags
+    <system-reminder>...</system-reminder>.
 
-    LLM обрабатывает эти теги как поведенческие директивы; они НЕ
-    показываются пользователю в финальном ответе.
+    The LLM processes these tags as behavioral directives; they are NOT
+    shown to the user in the final response.
     """
 
     def __init__(
@@ -154,15 +154,15 @@ class SystemReminder:
         extra_context: Optional[str] = None,
     ) -> str:
         """
-        Добавляет релевантные <system-reminder> теги в конец tool output.
+        Adds relevant <system-reminder> tags to the end of the tool output.
 
         Args:
-            tool_output:   Вывод инструмента (stdout, файл, API ответ).
-            source:        Имя источника для логирования.
-            extra_context: Дополнительный контекст для matching (задача, тип агента).
+            tool_output:   The tool's output (stdout, file, API response).
+            source:        The name of the source for logging.
+            extra_context: Additional context for matching (task, agent type).
 
         Returns:
-            Обогащённый вывод с системными напоминаниями.
+            The enriched output with system reminders.
         """
         if not self.enabled or not tool_output:
             return tool_output
@@ -185,7 +185,7 @@ class SystemReminder:
         )
 
         logger.debug(
-            f"[SystemReminder] Инжектировано {len(matched)} напоминаний в '{source}': "
+            f"[SystemReminder] Injected {len(matched)} reminders into '{source}': "
             f"{[r.id for r in matched]}"
         )
 
@@ -193,11 +193,11 @@ class SystemReminder:
 
     def inject_manual(self, tool_output: str, reminder_ids: list[str]) -> str:
         """
-        Инжекция конкретных напоминаний по ID (для детерминированных случаев).
+        Injects specific reminders by ID (for deterministic cases).
 
         Args:
-            tool_output:  Вывод инструмента.
-            reminder_ids: Список ID напоминаний из _REMINDER_LIBRARY.
+            tool_output:  The tool's output.
+            reminder_ids: A list of reminder IDs from _REMINDER_LIBRARY.
         """
         if not self.enabled:
             return tool_output
@@ -211,7 +211,7 @@ class SystemReminder:
                     f"<system-reminder id=\"{r.id}\">{r.content}</system-reminder>"
                 )
             else:
-                logger.warning(f"[SystemReminder] Напоминание '{rid}' не найдено в библиотеке.")
+                logger.warning(f"[SystemReminder] Reminder '{rid}' not found in the library.")
 
         if not tags_parts:
             return tool_output
@@ -222,8 +222,8 @@ class SystemReminder:
     @staticmethod
     def strip_reminders(text: str) -> str:
         """
-        Удаляет <system-reminder> теги из финального ответа перед показом юзеру.
-        Вызывать при форматировании output для пользователя.
+        Removes <system-reminder> tags from the final response before showing it to the user.
+        Should be called when formatting the output for the user.
         """
         return re.sub(
             r'\n*<system-reminder[^>]*>.*?</system-reminder>\n*',
@@ -238,10 +238,10 @@ _default_reminder = SystemReminder()
 
 
 def inject_reminders(tool_output: str, source: str = "tool", extra_context: str = "") -> str:
-    """Convenience wrapper для инжекции напоминаний."""
+    """Convenience wrapper for injecting reminders."""
     return _default_reminder.inject(tool_output, source=source, extra_context=extra_context)
 
 
 def strip_reminders(text: str) -> str:
-    """Convenience wrapper для удаления напоминаний из финального ответа."""
+    """Convenience wrapper for stripping reminders from the final response."""
     return SystemReminder.strip_reminders(text)

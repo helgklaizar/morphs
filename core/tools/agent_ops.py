@@ -25,8 +25,8 @@ class AgentTools:
             return f"Error: Role {role} is not recognized. Try one of: {valid_roles}"
             
         agent_id = f"agent-{uuid.uuid4().hex[:8]}"
-        logger.info(f"🧬 [Agent-Ops] Мозг создает нового субагента {agent_id} с ролью '{role}'")
-        logger.info(f"📋 [Agent-Ops] Brief (ТЗ): {task_brief[:50]}...")
+        logger.info(f"🧬 [Agent-Ops] Brain is creating a new subagent {agent_id} with role '{role}'")
+        logger.info(f"📋 [Agent-Ops] Brief (ToR): {task_brief[:50]}...")
         
         AgentRegistry.agents[agent_id] = {
             "role": role,
@@ -39,30 +39,30 @@ class AgentTools:
         
         async def background_agent_loop(aid):
             try:
-                # В будущем: здесь поднимается инстанс GeminiCore/CoreMind и работает в цикле
+                # In the future: an instance of GeminiCore/CoreMind will be launched here and run in a loop
                 while AgentRegistry.agents[aid]["status"] != "closed":
                     if AgentRegistry.agents[aid]["status"] == "sleeping":
                         await asyncio.sleep(1)
                         continue
                         
                     try:
-                        # Слушаем почтовый ящик P2P (Task 25 - IPC SendMessage)
+                        # Listening to the P2P mailbox (Task 25 - IPC SendMessage)
                         msg = await asyncio.wait_for(AgentRegistry.agents[aid]["mailbox"].get(), timeout=1.0)
-                        logger.info(f"📩 [Subagent {aid} ({role})] Принял IPC сообщение: {msg}")
+                        logger.info(f"📩 [Subagent {aid} ({role})] Received IPC message: {msg}")
                     except asyncio.TimeoutError:
                         pass
             except asyncio.CancelledError:
-                logger.info(f"💀 [Subagent {aid}] Фоновая задача отменена.")
+                logger.info(f"💀 [Subagent {aid}] Background task cancelled.")
 
         try:
             loop = asyncio.get_running_loop()
             t = loop.create_task(background_agent_loop(agent_id))
             AgentRegistry.agents[agent_id]["task"] = t
         except RuntimeError:
-            # Если нет цикла
+            # If no loop is running
             pass
             
-        # Уведомляем весь Swarm об инициализации через EventBus
+        # Notify the entire Swarm about initialization via EventBus
         try:
             await bus.publish("swarm.agent.spawned", {
                 "agent_id": agent_id,
@@ -83,7 +83,7 @@ class AgentTools:
         if target_agent_id not in AgentRegistry.agents:
             return f"Error: Agent {target_agent_id} not found in pool."
             
-        logger.info(f"📨 [IPC SendMessage] Отправка сообщения '{message[:30]}...' -> {target_agent_id}")
+        logger.info(f"📨 [IPC SendMessage] Sending message '{message[:30]}...' -> {target_agent_id}")
         await AgentRegistry.agents[target_agent_id]["mailbox"].put(message)
         
         try:
@@ -101,7 +101,7 @@ class AgentTools:
         if agent_id not in AgentRegistry.agents:
             return f"Error: Agent {agent_id} not found."
             
-        logger.info(f"⏳ [Agent-Ops] Мозг ожидает субагента {agent_id} (Таймаут: {timeout_seconds}s)")
+        logger.info(f"⏳ [Agent-Ops] Brain is waiting for subagent {agent_id} (Timeout: {timeout_seconds}s)")
         
         start = time.time()
         while time.time() - start < timeout_seconds:
@@ -124,7 +124,7 @@ class AgentTools:
         if task:
             task.cancel()
             
-        logger.info(f"🛑 [Agent-Ops] Субагент {agent_id} принудительно выключен.")
+        logger.info(f"🛑 [Agent-Ops] Subagent {agent_id} has been forcibly shut down.")
         return f"Success: Agent {agent_id} properly closed."
 
     @staticmethod
@@ -136,7 +136,7 @@ class AgentTools:
             return f"Error: Agent {agent_id} not found."
             
         AgentRegistry.agents[agent_id]["status"] = "sleeping"
-        logger.info(f"💤 [Agent-Ops] Агент {agent_id} погружен в глубокий сон (Cron {duration_seconds}s)...")
+        logger.info(f"💤 [Agent-Ops] Agent {agent_id} is put into deep sleep (Cron {duration_seconds}s)...")
         
         # Async suspension simulating real sleep
         await asyncio.sleep(duration_seconds)
@@ -144,7 +144,7 @@ class AgentTools:
         # Re-awake
         if AgentRegistry.agents[agent_id]["status"] == "sleeping":
             AgentRegistry.agents[agent_id]["status"] = "running"
-            logger.info(f"⏰ [Agent-Ops] Агент {agent_id} автоматически проснулся!")
+            logger.info(f"⏰ [Agent-Ops] Agent {agent_id} has woken up automatically!")
             return f"Success: Agent awoke automatically after {duration_seconds} seconds."
             
         return "Info: Agent state changed before sleep finished."
@@ -159,6 +159,6 @@ class AgentTools:
             
         if AgentRegistry.agents[agent_id]["status"] in ["sleeping", "paused"]:
             AgentRegistry.agents[agent_id]["status"] = "running"
-            logger.info(f"🔔 [Agent-Ops] Агент {agent_id} принудительно разбужен!")
+            logger.info(f"🔔 [Agent-Ops] Agent {agent_id} has been forcibly woken up!")
             return f"Success: Agent {agent_id} forcefully resumed."
         return f"Info: Agent {agent_id} is already running."

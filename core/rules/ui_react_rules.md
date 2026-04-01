@@ -1,4 +1,4 @@
-# Базовые правила для UI-Morph (Стек: React + Tailwind)
+# Basic rules for UI-Morph (Stack: React + Tailwind)
 
 1. NEVER write Class Components. Use functional components with hooks.
 2. ALWAYS use Tailwind CSS for styling. NO custom `.css` or inline styles unless strictly necessary for dynamic positioning.

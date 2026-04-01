@@ -1,11 +1,11 @@
 """
-YOLO Classifier — Задача 18: Безопасный перехват опасных BashHarness команд.
+YOLO Classifier — Task 18: Safely intercepting dangerous BashHarness commands.
 
-Двухуровневая система оценки риска:
-  1. Быстрый локальный анализ: regex-эвристика по паттернам (без LLM) → instant O(1)
-  2. LLM-верификация: Gemini оценивает команды с неочевидным риском
+Two-level risk assessment system:
+  1. Fast local analysis: regex heuristics based on patterns (no LLM) → instant O(1)
+  2. LLM verification: Gemini evaluates commands with non-obvious risks
 
-Кеш результатов: идентичные команды не отправляются в LLM повторно.
+Result caching: identical commands are not sent to the LLM repeatedly.
 """
 import re
 import hashlib
@@ -18,10 +18,10 @@ from core.logger import logger
 
 class RiskLevel(Enum):
     SAFE = "SAFE"
-    LOW = "LOW"            # Предупреждение в логе, выполняется без прерываний
-    MEDIUM = "MEDIUM"      # Подтверждение пользователя обязательно
-    HIGH = "HIGH"          # Заблокировано, требует явного dangerously_disable_sandbox
-    CRITICAL = "CRITICAL"  # Абсолютный блок, нельзя обойти никак
+    LOW = "LOW"            # Warning in the log, executes without interruption
+    MEDIUM = "MEDIUM"      # User confirmation is mandatory
+    HIGH = "HIGH"          # Blocked, requires explicit dangerously_disable_sandbox
+    CRITICAL = "CRITICAL"  # Absolute block, cannot be bypassed in any way
 
 
 @dataclass
@@ -33,54 +33,54 @@ class ClassificationResult:
     is_blocked: bool
 
 
-# --- Эвристические правила ---
-# Каждое правило: (паттерн_regex, RiskLevel, категория, человеко-читаемая причина)
+# --- Heuristic Rules ---
+# Each rule: (regex_pattern, RiskLevel, category, human-readable reason)
 _RISK_RULES: list[tuple] = [
-    # CRITICAL — абсолютный блок
-    (r"\brm\s+-rf\s+/(?:\s|$)", RiskLevel.CRITICAL, "FILESYSTEM_DESTRUCTION", "Удаление корневого раздела"),
-    (r"\bdd\s+if=.*of=/dev/[sh]d", RiskLevel.CRITICAL, "DISK_OVERWRITE", "Перезапись диска через dd"),
-    (r"\bmkfs\b", RiskLevel.CRITICAL, "DISK_FORMAT", "Форматирование диска"),
-    (r"\bshred\b.*--remove", RiskLevel.CRITICAL, "FILESYSTEM_DESTRUCTION", "Безвозвратное удаление файлов"),
+    # CRITICAL — absolute block
+    (r"\brm\s+-rf\s+/(?:\s|$)", RiskLevel.CRITICAL, "FILESYSTEM_DESTRUCTION", "Deletion of the root partition"),
+    (r"\bdd\s+if=.*of=/dev/[sh]d", RiskLevel.CRITICAL, "DISK_OVERWRITE", "Disk overwrite via dd"),
+    (r"\bmkfs\b", RiskLevel.CRITICAL, "DISK_FORMAT", "Disk formatting"),
+    (r"\bshred\b.*--remove", RiskLevel.CRITICAL, "FILESYSTEM_DESTRUCTION", "Irreversible file deletion"),
 
-    # HIGH — требует dangerously_disable_sandbox
-    (r"\bsudo\s+(?:rm|chmod|chown|usermod|passwd|visudo)", RiskLevel.HIGH, "PRIVILEGE_ESCALATION", "Привилегированная деструктивная операция через sudo"),
-    (r"\bgit\s+push\s+(?:--force|-f)\b", RiskLevel.HIGH, "GIT_FORCE_PUSH", "Принудительная перезапись истории в удалённом репозитории"),
-    (r"\bgit\s+push\s+.*:(?:master|main)\b", RiskLevel.HIGH, "GIT_PUSH_MAIN", "Прямой push в защищённую ветку"),
-    (r"\bdrop\s+(?:table|database|schema)\b", RiskLevel.HIGH, "DB_DESTRUCTION", "Деструктивная SQL-операция DROP"),
-    (r"\btruncate\s+table\b", RiskLevel.HIGH, "DB_DESTRUCTION", "Удаление всех записей таблицы"),
-    (r"\b(?:DELETE|UPDATE)\s+FROM\b(?!.*WHERE)", RiskLevel.HIGH, "DB_BULK_MUTATION", "DELETE/UPDATE без WHERE-условия"),
-    (r"\bkill\s+-9\s+1\b", RiskLevel.HIGH, "PROCESS_KILL", "Убийство init-процесса (root PID)"),
-    (r"\bcurl\s+.*\|\s*(?:bash|sh|zsh|python)\b", RiskLevel.HIGH, "REMOTE_CODE_EXEC", "Выполнение кода, скачанного из интернета (pipe to shell)"),
-    (r"\bwget\s+.*-O\s*-\s*\|\s*(?:bash|sh)", RiskLevel.HIGH, "REMOTE_CODE_EXEC", "wget pipe to shell — потенциальный RCE"),
+    # HIGH — requires dangerously_disable_sandbox
+    (r"\bsudo\s+(?:rm|chmod|chown|usermod|passwd|visudo)", RiskLevel.HIGH, "PRIVILEGE_ESCALATION", "Privileged destructive operation via sudo"),
+    (r"\bgit\s+push\s+(?:--force|-f)\b", RiskLevel.HIGH, "GIT_FORCE_PUSH", "Forced history rewrite in a remote repository"),
+    (r"\bgit\s+push\s+.*:(?:master|main)\b", RiskLevel.HIGH, "GIT_PUSH_MAIN", "Direct push to a protected branch"),
+    (r"\bdrop\s+(?:table|database|schema)\b", RiskLevel.HIGH, "DB_DESTRUCTION", "Destructive SQL DROP operation"),
+    (r"\btruncate\s+table\b", RiskLevel.HIGH, "DB_DESTRUCTION", "Deletion of all table records"),
+    (r"\b(?:DELETE|UPDATE)\s+FROM\b(?!.*WHERE)", RiskLevel.HIGH, "DB_BULK_MUTATION", "DELETE/UPDATE without a WHERE clause"),
+    (r"\bkill\s+-9\s+1\b", RiskLevel.HIGH, "PROCESS_KILL", "Killing the init process (root PID)"),
+    (r"\bcurl\s+.*\|\s*(?:bash|sh|zsh|python)\b", RiskLevel.HIGH, "REMOTE_CODE_EXEC", "Executing code downloaded from the internet (pipe to shell)"),
+    (r"\bwget\s+.*-O\s*-\s*\|\s*(?:bash|sh)", RiskLevel.HIGH, "REMOTE_CODE_EXEC", "wget pipe to shell — potential RCE"),
 
-    # MEDIUM — подтверждение обязательно
-    (r"\brm\s+(?:-r[f]?|-[rf]+)\b", RiskLevel.MEDIUM, "RECURSIVE_DELETE", "Рекурсивное удаление файлов"),
-    (r"\bchmod\s+-R\s+777\b", RiskLevel.MEDIUM, "INSECURE_PERMISSIONS", "Установка небезопасных прав доступа 777"),
-    (r"\bchown\s+-R\b", RiskLevel.MEDIUM, "OWNERSHIP_CHANGE", "Рекурсивная смена владельца файлов"),
-    (r"\bgit\s+rebase\s+-i\b", RiskLevel.MEDIUM, "GIT_HISTORY_REWRITE", "Интерактивный rebase (переписывание истории)"),
-    (r"\bgit\s+reset\s+--hard\b", RiskLevel.MEDIUM, "GIT_HARD_RESET", "Жёсткий сброс git (потеря незафиксированного кода)"),
-    (r"\bgit\s+clean\s+-[fFdxX]+", RiskLevel.MEDIUM, "GIT_CLEAN", "git clean — удаление неотслеживаемых файлов"),
-    (r">\s*/(?:etc|var|usr|boot|sys|proc)/", RiskLevel.MEDIUM, "SYSTEM_FILE_OVERWRITE", "Запись в системный каталог"),
-    (r"\bsystemctl\s+(?:stop|disable|restart)\b", RiskLevel.MEDIUM, "SERVICE_CONTROL", "Управление системными сервисами"),
-    (r"\bnpm\s+publish\b", RiskLevel.MEDIUM, "PUBLIC_PUBLISH", "Публикация пакета в публичный реестр NPM"),
-    (r"\bpip\s+install\s+--upgrade\s+pip\b", RiskLevel.MEDIUM, "PACKAGE_UPGRADE", "Обновление pip в системном окружении"),
+    # MEDIUM — confirmation mandatory
+    (r"\brm\s+(?:-r[f]?|-[rf]+)\b", RiskLevel.MEDIUM, "RECURSIVE_DELETE", "Recursive file deletion"),
+    (r"\bchmod\s+-R\s+777\b", RiskLevel.MEDIUM, "INSECURE_PERMISSIONS", "Setting insecure 777 permissions"),
+    (r"\bchown\s+-R\b", RiskLevel.MEDIUM, "OWNERSHIP_CHANGE", "Recursive change of file ownership"),
+    (r"\bgit\s+rebase\s+-i\b", RiskLevel.MEDIUM, "GIT_HISTORY_REWRITE", "Interactive rebase (history rewriting)"),
+    (r"\bgit\s+reset\s+--hard\b", RiskLevel.MEDIUM, "GIT_HARD_RESET", "Hard git reset (loss of uncommitted code)"),
+    (r"\bgit\s+clean\s+-[fFdxX]+", RiskLevel.MEDIUM, "GIT_CLEAN", "git clean — removal of untracked files"),
+    (r">\s*/(?:etc|var|usr|boot|sys|proc)/", RiskLevel.MEDIUM, "SYSTEM_FILE_OVERWRITE", "Writing to a system directory"),
+    (r"\bsystemctl\s+(?:stop|disable|restart)\b", RiskLevel.MEDIUM, "SERVICE_CONTROL", "Managing system services"),
+    (r"\bnpm\s+publish\b", RiskLevel.MEDIUM, "PUBLIC_PUBLISH", "Publishing a package to the public NPM registry"),
+    (r"\bpip\s+install\s+--upgrade\s+pip\b", RiskLevel.MEDIUM, "PACKAGE_UPGRADE", "Updating pip in the system environment"),
 
-    # LOW — предупреждение в логе
-    (r"\bsudo\s+(?!rm|chmod|chown|usermod)\w+", RiskLevel.LOW, "SUDO_USAGE", "Выполнение с sudo (проверьте необходимость)"),
-    (r"\bmv\s+.*\s+/(?:tmp|var|etc)/", RiskLevel.LOW, "FILE_MOVE_SYSTEM", "Перемещение файла в системный каталог"),
-    (r"\benv\b.*=.*(?:TOKEN|KEY|SECRET|PASSWORD)", RiskLevel.LOW, "SECRET_EXPOSURE", "Потенциальная передача секрета через env"),
-    (r">\s*~?/[a-zA-Z]", RiskLevel.LOW, "FILE_OVERWRITE", "Перезапись файла через оператор >"),
+    # LOW — warning in the log
+    (r"\bsudo\s+(?!rm|chmod|chown|usermod)\w+", RiskLevel.LOW, "SUDO_USAGE", "Execution with sudo (check if necessary)"),
+    (r"\bmv\s+.*\s+/(?:tmp|var|etc)/", RiskLevel.LOW, "FILE_MOVE_SYSTEM", "Moving a file to a system directory"),
+    (r"\benv\b.*=.*(?:TOKEN|KEY|SECRET|PASSWORD)", RiskLevel.LOW, "SECRET_EXPOSURE", "Potential secret exposure via env"),
+    (r">\s*~?/[a-zA-Z]", RiskLevel.LOW, "FILE_OVERWRITE", "File overwrite via > operator"),
 ]
 
 
 def _fast_classify(command: str) -> ClassificationResult:
-    """O(n) проход по эвристическим правилам без LLM."""
+    """O(n) pass through heuristic rules without LLM."""
     cmd_lower = command.lower().strip()
     matched_categories: list[str] = []
     highest_risk = RiskLevel.SAFE
     reasons: list[str] = []
 
-    # Приоритет уровней: CRITICAL > HIGH > MEDIUM > LOW > SAFE
+    # Risk level priority: CRITICAL > HIGH > MEDIUM > LOW > SAFE
     priority = {RiskLevel.SAFE: 0, RiskLevel.LOW: 1, RiskLevel.MEDIUM: 2, RiskLevel.HIGH: 3, RiskLevel.CRITICAL: 4}
 
     for pattern, risk, category, reason in _RISK_RULES:
@@ -92,20 +92,20 @@ def _fast_classify(command: str) -> ClassificationResult:
 
     return ClassificationResult(
         risk_level=highest_risk,
-        reason="; ".join(reasons) if reasons else "Команда выглядит безопасной",
+        reason="; ".join(reasons) if reasons else "Command appears to be safe",
         categories=matched_categories,
         requires_confirmation=highest_risk in (RiskLevel.MEDIUM, RiskLevel.HIGH),
         is_blocked=highest_risk == RiskLevel.CRITICAL,
     )
 
 
-# LRU-кеш по хешу команды — LLM не вызывается для одинаковых команд
+# LRU cache by command hash — LLM is not called for identical commands
 @lru_cache(maxsize=256)
 def _cached_llm_verdict(cmd_hash: str, command: str) -> str:
-    """Вызов Gemini для пограничных случаев. Кешируется по md5 команды."""
+    """Calls Gemini for borderline cases. Cached by the command's md5 hash."""
     try:
         from core.gemini_agent import GeminiCore
-        gemini = GeminiCore(model_name="gemini-2.0-flash")  # быстрая модель для быстрого ответа
+        gemini = GeminiCore(model_name="gemini-2.0-flash")  # fast model for a quick response
         prompt = (
             f"Analyze this shell command for destructive, irreversible, or highly risky side-effects:\n"
             f"```\n{command}\n```\n"
@@ -117,14 +117,14 @@ def _cached_llm_verdict(cmd_hash: str, command: str) -> str:
         return result
     except Exception as e:
         logger.warning(f"[YOLOClassifier] LLM fallback failed: {e}. Treating as MEDIUM.")
-        return "MEDIUM | LLM недоступен, выставлен консервативный уровень риска"
+        return "MEDIUM | LLM is unavailable, a conservative risk level has been set"
 
 
 class YOLOClassifier:
     """
-    Публичный интерфейс YOLO Classifier.
+    Public interface for the YOLO Classifier.
     
-    Использование:
+    Usage:
         clf = YOLOClassifier()
         result = clf.classify("rm -rf /tmp/build")
         if result.requires_confirmation:
@@ -134,17 +134,17 @@ class YOLOClassifier:
     def __init__(self, use_llm_for_ambiguous: bool = True):
         """
         Args:
-            use_llm_for_ambiguous: Если True — команды с риском LOW будут дополнительно
-                верифицированы через Gemini. MEDIUM и выше блокируются сразу без LLM.
+            use_llm_for_ambiguous: If True — commands with LOW risk will be additionally
+                verified by Gemini. MEDIUM and higher are blocked immediately without LLM.
         """
         self.use_llm_for_ambiguous = use_llm_for_ambiguous
 
     def classify(self, command: str) -> ClassificationResult:
-        """Классифицирует команду. Быстрый O(n) + опциональный LLM."""
+        """Classifies a command. Fast O(n) + optional LLM."""
         fast_result = _fast_classify(command)
 
         if fast_result.risk_level == RiskLevel.SAFE and self.use_llm_for_ambiguous:
-            # Команда не попала ни под одно правило — спросим LLM для нестандартных паттернов
+            # The command did not match any rule — let's ask the LLM for non-standard patterns
             cmd_hash = hashlib.md5(command.encode()).hexdigest()
             llm_raw = _cached_llm_verdict(cmd_hash, command)
             return self._parse_llm_verdict(llm_raw, command)
@@ -152,16 +152,16 @@ class YOLOClassifier:
         return fast_result
 
     def _parse_llm_verdict(self, raw: str, command: str) -> ClassificationResult:
-        """Парсит ответ LLM в ClassificationResult."""
+        """Parses the LLM response into a ClassificationResult."""
         parts = raw.split("|", 1)
         level_str = parts[0].strip().upper()
-        reason = parts[1].strip() if len(parts) > 1 else "LLM классификация"
+        reason = parts[1].strip() if len(parts) > 1 else "LLM classification"
 
         level_map = {
             "SAFE": RiskLevel.SAFE, "LOW": RiskLevel.LOW,
             "MEDIUM": RiskLevel.MEDIUM, "HIGH": RiskLevel.HIGH, "CRITICAL": RiskLevel.CRITICAL
         }
-        risk = level_map.get(level_str, RiskLevel.MEDIUM)  # консервативный fallback
+        risk = level_map.get(level_str, RiskLevel.MEDIUM)  # conservative fallback
 
         if risk != RiskLevel.SAFE:
             logger.info(f"[YOLOClassifier] LLM verdict: {risk.value} — {reason}")
@@ -175,7 +175,7 @@ class YOLOClassifier:
         )
 
 
-# Singleton — один экземпляр на процесс, кеш работает глобально
+# Singleton — one instance per process, cache works globally
 _default_classifier = YOLOClassifier(use_llm_for_ambiguous=True)
 
 

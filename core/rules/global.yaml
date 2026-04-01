@@ -1,11 +1,11 @@
-# Глобальные бизнес-правила (RAG Инъекция)
+# Global business rules (RAG Injection)
 brand:
   colors:
-    primary: "#FF6B00"    # Главный акцентный (оранжевый)
-    secondary: "#1A1A24"  # Глубокий темный (Glassmorphism фон)
-  tone_of_voice: "Дружелюбный, лаконичный B2B стиль. Никакого панибратства, только четкие действия."
+    primary: "#FF6B00"    # Main accent (orange)
+    secondary: "#1A1A24"  # Deep dark (Glassmorphism background)
+  tone_of_voice: "Friendly, concise B2B style. No over-familiarity, only clear actions."
 
 logic:
   currency: "RUB"
   offline_first: true
-  auto_discount_pro: 10 # Скидка 10% для профилей уровня PRO
+  auto_discount_pro: 10 # 10% discount for PRO level profiles

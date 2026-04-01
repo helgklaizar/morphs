@@ -4,13 +4,13 @@ from core.logger import logger
 
 class EvolutionMorph:
     """
-    Самооптимизация и Рекурсивное улучшение (Self-Evolution).
-    ИИ, который читает собственный исходный код Orchestrator-а 
-    и выявляет Tech Debt (высокую цикломатическую сложность через AST).
+    Self-Optimization and Recursive Improvement (Self-Evolution).
+    An AI that reads its own Orchestrator source code
+    and identifies Tech Debt (high cyclomatic complexity via AST).
     """
 
     def scan_core(self):
-        logger.info("🧬 [Evolution-Morph] Сканирую собственный исходный код (AST) на наличие узких мест...")
+        logger.info("🧬 [Evolution-Morph] Scanning own source code (AST) for bottlenecks...")
         
         main_path = "main.py"
         if not os.path.exists(main_path):
@@ -22,7 +22,7 @@ class EvolutionMorph:
         try:
             tree = ast.parse(code)
         except Exception as e:
-            logger.info(f"💥 [Evolution-Morph] Синтаксическая ошибка: {e}")
+            logger.info(f"💥 [Evolution-Morph] Syntax error: {e}")
             return "SyntaxError in Main"
 
         complexity_report = []
@@ -34,14 +34,14 @@ class EvolutionMorph:
                         complexity += 1
                         
                 if complexity > 15:
-                    complexity_report.append(f"Функция '{node.name}' имеет спагетти-сложность: {complexity}/15.")
+                    complexity_report.append(f"Function '{node.name}' has spaghetti-complexity: {complexity}/15.")
 
         if complexity_report:
-            logger.info("💡 [Evolution-Morph] Tech Debt: Найден спагетти-код в Ядре!")
+            logger.info("💡 [Evolution-Morph] Tech Debt: Spaghetti code found in the Core!")
             for issue in complexity_report:
                 logger.info(f"   -> {issue}")
             
             return "Refactoring needed"
             
-        logger.info("✅ [Evolution-Morph] Ядро оптимизировано на 100%. Tech debt = 0.")
+        logger.info("✅ [Evolution-Morph] Core is 100% optimized. Tech debt = 0.")
         return "Optimized"

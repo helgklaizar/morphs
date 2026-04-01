@@ -41,7 +41,7 @@ class ToolPermissionContext:
             cmd = args.get("command", "")
             forbidden = ["rm -rf", "mkfs", "chmod -R 777"]
             if any(f in cmd for f in forbidden):
-                logger.info(f"🚨 [Security] Заблокировано выполнение деструктивной команды: {cmd}")
+                logger.info(f"🚨 [Security] Destructive command execution blocked: {cmd}")
                 return False
                 
         return True

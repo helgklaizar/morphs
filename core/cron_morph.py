@@ -1,10 +1,10 @@
 """
-CronMorph — Watchdog/Healthcheck + Cron-планировщик (Задача 26).
+CronMorph — Watchdog/Healthcheck + Cron scheduler (Task 26).
 
-Позволяет агентам:
-  - засыпать на N секунд (экономия CPU/токенов)
-  - запускать healthcheck по HTTP без зависания в вечном цикле
-  - планировать повторяющиеся задачи через cron-расписание
+Allows agents to:
+  - sleep for N seconds (saving CPU/tokens)
+  - run an HTTP healthcheck without getting stuck in an infinite loop
+  - schedule recurring tasks via a cron schedule
 """
 
 import asyncio
@@ -34,7 +34,7 @@ class HealthcheckResult:
 
 
 async def ping_url(url: str, timeout: float = 5.0) -> HealthcheckResult:
-    """Минимальный async HTTP-пинг без зависания."""
+    """A minimal async HTTP ping that doesn't block."""
     import aiohttp
     start = time.perf_counter()
     try:
@@ -68,8 +68,8 @@ class CronJob:
 
 class CronMorph:
     """
-    Планировщик задач для субагентов (Watchdog style).
-    Исключает вечные циклы опроса через sleep-between-checks.
+    Task scheduler for sub-agents (Watchdog style).
+    Avoids infinite polling loops by using sleep-between-checks.
     """
 
     def __init__(self):
@@ -83,24 +83,24 @@ class CronMorph:
         interval_seconds: int,
         coro_factory: Callable[[], Awaitable[None]],
     ) -> None:
-        """Регистрация нового периодического задания."""
+        """Registers a new periodic job."""
         self._jobs[name] = CronJob(
             name=name,
             interval_seconds=interval_seconds,
             coro_factory=coro_factory,
         )
-        logger.info(f"🕰️ [CronMorph] Задание '{name}' зарегистрировано (каждые {interval_seconds}s)")
+        logger.info(f"🕰️ [CronMorph] Job '{name}' registered (every {interval_seconds}s)")
 
     def unregister(self, name: str) -> None:
-        """Удаление задания."""
+        """Removes a job."""
         self._jobs.pop(name, None)
-        logger.info(f"🗑️ [CronMorph] Задание '{name}' снято с расписания")
+        logger.info(f"🗑️ [CronMorph] Job '{name}' unscheduled")
 
     async def run(self, max_seconds: Optional[int] = None) -> None:
-        """Main async loop с честным sleep между тиками (не spinning!)."""
+        """Main async loop with a proper sleep between ticks (not spinning!)."""
         self._running = True
         start = time.time()
-        logger.info("⏱️ [CronMorph] Планировщик запущен.")
+        logger.info("⏱️ [CronMorph] Scheduler started.")
 
         while self._running:
             now = time.time()
@@ -110,35 +110,35 @@ class CronMorph:
                     continue
                 if (now - job.last_run) >= job.interval_seconds:
                     try:
-                        logger.info(f"▶️ [CronMorph] Запуск '{job.name}' (Zapusk #{job.run_count + 1})")
+                        logger.info(f"▶️ [CronMorph] Running '{job.name}' (Run #{job.run_count + 1})")
                         await job.coro_factory()
                         job.run_count += 1
                         job.last_run = time.time()
                     except Exception as e:
-                        logger.error(f"🔥 [CronMorph] Ошибка в задании '{job.name}': {e}", exc_info=True)
+                        logger.error(f"🔥 [CronMorph] Error in job '{job.name}': {e}", exc_info=True)
 
             if max_seconds is not None and (now - start) >= max_seconds:
-                logger.info(f"⏱️ [CronMorph] Лимит {max_seconds}s истёк — останавливаемся.")
+                logger.info(f"⏱️ [CronMorph] Limit of {max_seconds}s reached — stopping.")
                 break
-            # Честный sleep — не занимаем CPU/токены впустую
+            # Proper sleep — not wasting CPU/tokens
             await asyncio.sleep(self._tick_interval)
 
         self._running = False
-        logger.info("⏹️ [CronMorph] Планировщик остановлен.")
+        logger.info("⏹️ [CronMorph] Scheduler stopped.")
 
     def stop(self) -> None:
         self._running = False
 
 
 # ---------------------------------------------------------------------------
-# WatchdogMorph — Healthcheck-агент с sleep примитивом
+# WatchdogMorph — Healthcheck agent with a sleep primitive
 # ---------------------------------------------------------------------------
 
 class WatchdogMorph:
     """
-    Сторожевой агент (Watchdog).
-    Проверяет статус серверов с паузами через CronMorph.sleep().
-    При обнаружении сбоя — публикует событие в EventBus.
+    Watchdog agent.
+    Checks server status with pauses via the CronMorph scheduler.
+    Publishes an event to the EventBus upon detecting a failure.
     """
 
     def __init__(
@@ -154,7 +154,7 @@ class WatchdogMorph:
         self._cron.register("healthcheck", check_interval, self._run_checks)
 
     async def _run_checks(self) -> None:
-        logger.info(f"🔍 [WatchdogMorph] Healthcheck {len(self.targets)} серверов...")
+        logger.info(f"🔍 [WatchdogMorph] Healthchecking {len(self.targets)} servers...")
         tasks = [ping_url(url) for url in self.targets]
         results: list[HealthcheckResult] = await asyncio.gather(*tasks)
 
@@ -169,10 +169,10 @@ class WatchdogMorph:
                     })
                     logger.warning(f"🚨 [WatchdogMorph] Alert published: {r.url} is DOWN!")
                 except Exception as e:
-                    logger.error(f"⚠️ [WatchdogMorph] Не удалось опубликовать alert: {e}")
+                    logger.error(f"⚠️ [WatchdogMorph] Failed to publish alert: {e}")
 
     async def watch(self, duration_seconds: Optional[int] = None) -> None:
-        """Запускает непрерывный мониторинг с честным sleep между проверками."""
+        """Starts continuous monitoring with a proper sleep between checks."""
         await self._cron.run(max_seconds=duration_seconds)
 
     def stop(self) -> None:
@@ -180,11 +180,11 @@ class WatchdogMorph:
 
 
 # ---------------------------------------------------------------------------
-# Standalone async sleep helper (для тулза AgentTools.sleep_agent)
+# Standalone async sleep helper (for the AgentTools.sleep_agent tool)
 # ---------------------------------------------------------------------------
 
 async def agent_sleep(seconds: int, agent_id: str = "unknown") -> None:
-    """Честный async sleep для агентов — не блокирует event loop."""
-    logger.info(f"💤 [CronMorph] Агент {agent_id} засыпает на {seconds}s...")
+    """A proper async sleep for agents — does not block the event loop."""
+    logger.info(f"💤 [CronMorph] Agent {agent_id} is going to sleep for {seconds}s...")
     await asyncio.sleep(seconds)
-    logger.info(f"⏰ [CronMorph] Агент {agent_id} проснулся!")
+    logger.info(f"⏰ [CronMorph] Agent {agent_id} woke up!")

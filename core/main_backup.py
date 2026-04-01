@@ -26,7 +26,7 @@ if os.path.exists("routers"):
             spec.loader.exec_module(module)
             if hasattr(module, "router"):
                 app.include_router(module.router, prefix=f"/api/{module_name}")
-                logger.info(f"🔗 [Core Mind] Динамически подключен ИИ-роутер: {module_name}")
+                logger.info(f"🔗 [Core Mind] Dynamically connected AI-router: {module_name}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -57,9 +57,9 @@ def handle_business_event(req: EventRequest, bg_tasks: BackgroundTasks):
     save_event(req.event_type, req.payload)
     
     daemon = SyncDaemon()
-    daemon.send_telegram_report(f"Новое событие ({req.event_type}): {req.payload}")
+    daemon.send_telegram_report(f"New event ({req.event_type}): {req.payload}")
     
-    # Task 3: Reactor-Morph (анализирует событие через RAG Бизнес-Правил)
+    # Task 3: Reactor-Morph (analyzes the event via RAG of Business Rules)
     def invoke_reactor():
         reactor = ReactorMorph()
         reactor.react(req.event_type, req.payload)
@@ -92,16 +92,16 @@ def boot_mind():
 
 def orchestrate_generation(req: SetupRequest):
     boot_mind()
-    logger.info("🧠 [Swarm] Запуск параллельного конвейера: Rules -> API -> Reviewer -> Data -> UI -> Blueprint...")
+    logger.info("🧠 [Swarm] Starting parallel pipeline: Rules -> API -> Reviewer -> Data -> UI -> Blueprint...")
     
-    # 1 & 3: API-Morph + Agent Reviewer (Пишет Python код для FastAPI и проверяет его)
+    # 1 & 3: API-Morph + Agent Reviewer (Writes Python code for FastAPI and verifies it)
     api_agent = APIMorph()
     file_path = api_agent.generate_backend(req)
     
     backend_code = ""
     module_name = "".join(filter(str.isalpha, req.business_type.lower())) or "custom"
     
-    # Горячее монтирование роутера (Hot-Mount без перезагрузки Uvicorn)
+    # Hot-mounting the router (Hot-Mount without Uvicorn reload)
     if file_path and os.path.exists(file_path):
         with open(file_path, "r") as f:
             backend_code = f.read()
@@ -113,17 +113,17 @@ def orchestrate_generation(req: SetupRequest):
             spec.loader.exec_module(module)
             if hasattr(module, "router"):
                 app.include_router(module.router, prefix=f"/api/{module_name}")
-                logger.info(f"🔗 [Core Mind] Динамически внедрен роутер 'GET /api/{module_name}' без рестарта сервера!")
+                logger.info(f"🔗 [Core Mind] Dynamically injected router 'GET /api/{module_name}' without server restart!")
         
-        # Запускаем Data-Morph для наполнения БД свежими данными!
+        # Launching Data-Morph to populate the DB with fresh data!
         from data_morph import DataMorph
         data_agent = DataMorph()
         data_agent.generate_mock_data(file_path, req.business_type)
     
-    # 2. UI-Morph (Пишет React код, читая сгенерированный API)
+    # 2. UI-Morph (Writes React code by reading the generated API)
     run_ui_morph(req, backend_code, module_name)
     
-    # 4. Память Бизнес-контекста (Blueprints State)
+    # 4. Business Context Memory (Blueprints State)
     state_file = f"../blueprints/{module_name}_state.json"
     os.makedirs("../blueprints", exist_ok=True)
     state_data = {
@@ -134,56 +134,56 @@ def orchestrate_generation(req: SetupRequest):
     }
     with open(state_file, "w") as f:
         json.dump(state_data, f, indent=4)
-    logger.info(f"📝 [Blueprint Memory] Долговременный контекст бизнеса сохранен в {state_file}")
+    logger.info(f"📝 [Blueprint Memory] Long-term business context saved to {state_file}")
 
 @app.post("/api/v1/generate")
 def create_ui_component(req: SetupRequest, background_tasks: BackgroundTasks):
-    # Запускаем Рой в фоне (ОЧЕРЕДЬ, строго последовательно)
+    # Running the Swarm in the background (QUEUE, strictly sequential)
     background_tasks.add_task(orchestrate_generation, req)
     return {"status": "accepted", "message": "Morph Forge is orchestrating."}
 
 def run_ui_morph(req: SetupRequest, backend_code: str = "", module_name: str = ""):
-    logger.info(f"👔 [UI-Morph] ТЗ получено: бизнес '{req.business_type}', модули: {req.modules}.")
+    logger.info(f"👔 [UI-Morph] Task received: business '{req.business_type}', modules: {req.modules}.")
     
-    # Сбор RAG данных из rules.yaml
+    # Collecting RAG data from rules.yaml
     rules_text = ""
     for f in glob.glob("rules/*.yaml"):
         with open(f, "r") as rules_file:
             rules_text += rules_file.read() + "\n"
     
     prompt = (
-        f"Ты крутой UI-разработчик. Тебя попросили написать React-компонент (TypeScript) для '{req.business_type}'.\n"
-        f"УЧИТЫВАЙ БИЗНЕС-ПРАВИЛА (RAG):\n{rules_text}\n"
-        f"Включи в него интерфейс для модулей: {', '.join(req.modules)}.\n"
-        f"🔗 ИНТЕЛЛЕКТУАЛЬНАЯ СПАЙКА (API INTEGRATION): Бэкенд уже сгенерирован и работает!\n"
-        f"Вот код бэкенда:\n```python\n{backend_code}\n```\n"
-        f"Вместо 'заглушек', создай РЕАЛЬНЫЕ \`fetch()\` запросы (например \`fetch('/api/{module_name}/какой-то-эндпоинт')\`) к тем путям, которые ты видишь в коде бэкенда!\n"
-        "Сделай тёмный премиальный стиль, Glassmorphism, TailwindCSS. Применяй брендовые цвета из RAG!"
+        f"You are a cool UI developer. You have been asked to write a React component (TypeScript) for '{req.business_type}'.\n"
+        f"CONSIDER THE BUSINESS RULES (RAG):\n{rules_text}\n"
+        f"Include an interface for the modules: {', '.join(req.modules)}.\n"
+        f"🔗 INTELLIGENT LINKING (API INTEGRATION): The backend has already been generated and is working!\n"
+        f"Here is the backend code:\n```python\n{backend_code}\n```\n"
+        f"Instead of 'placeholders', create REAL `fetch()` requests (e.g., `fetch('/api/{module_name}/some-endpoint')`) to the paths you see in the backend code!\n"
+        "Create a dark premium style, Glassmorphism, TailwindCSS. Use brand colors from RAG!"
     )
     schema = (
         "<thought>\n"
-        "Пошагово распиши, какие кнопки, стейты и fetch-запросы нужны на основе бэкенда.\n"
+        "Describe step-by-step what buttons, states, and fetch requests are needed based on the backend.\n"
         "</thought>\n"
         "<component_code>\n"
-        "Здесь СТРОГО чистый TSX код самого React-компонента.\n"
+        "Here is STRICTLY pure TSX code of the React component itself.\n"
         "</component_code>\n"
         "<test_code>\n"
-        "Здесь СТРОГО чистый TSX код для Vitest тестов (import { describe, it } from 'vitest').\n"
+        "Here is STRICTLY pure TSX code for Vitest tests (import { describe, it } from 'vitest').\n"
         "</test_code>"
     )
     
-    # Мозг начинает писать код
+    # The mind starts writing code
     result = mind.think_structured(prompt, schema, max_tokens=3000)
-    logger.info(f"🤔 [UI-Morph Мысль]: {result.get('thought', 'Нет мыслей')}")
+    logger.info(f"🤔 [UI-Morph Thought]: {result.get('thought', 'No thoughts')}")
     
-    # Пытаемся забрать через кастомные теги из XML
-    # У think_structured сейчас жестко зашиты <code> и <thought>.
-    # Хмм, надо проверить парсер в mlx_agent.py! Но пока возьмем как есть, 
-    # если XML сломается — возьмет fallback.
+    # Trying to extract via custom XML tags
+    # think_structured currently has <code> and <thought> hardcoded.
+    # Hmm, I need to check the parser in mlx_agent.py! But for now, let's take it as is,
+    # if the XML breaks — it will use a fallback.
     code = result.get("component_code", "").replace("```tsx", "").replace("```typescript", "").replace("```", "").strip()
     test_code = result.get("test_code", "").replace("```tsx", "").replace("```typescript", "").replace("```", "").strip()
     
-    # Сохраняем прямо внутрь запущенного Tauri/Vite проекта (Горячая перезагрузка)
+    # Saving directly into the running Tauri/Vite project (Hot reload)
     target_dir = "../configurator/src/components"
     os.makedirs(target_dir, exist_ok=True)
     
@@ -194,21 +194,21 @@ def run_ui_morph(req: SetupRequest, backend_code: str = "", module_name: str = "
         with open(f"{target_dir}/GeneratedModule.test.tsx", "w") as f:
             f.write(test_code)
     
-    logger.info("✨ [UI-Morph] Компонент готов: GeneratedModule.tsx и тесты к нему.")
+    logger.info("✨ [UI-Morph] Component is ready: GeneratedModule.tsx and its tests.")
     
-    logger.info("🚀 [CI/CD] Запуск авто-тестов для валидации мутации...")
+    logger.info("🚀 [CI/CD] Starting auto-tests to validate the mutation...")
     healer = HealerMorph("../configurator", f"{target_dir}/GeneratedModule.tsx")
     code_res, out, err = healer.run_tests()
     if code_res != 0:
-        logger.info("🔥 [CI/CD] Vitest упал! Healer-Morph начинает хирургию...")
+        logger.info("🔥 [CI/CD] Vitest failed! Healer-Morph is starting surgery...")
         prompt, fixed_code = healer.heal_code(out + "\n" + err)
-        logger.info("🔄 [CI/CD] Вторичный прогон тестов...")
+        logger.info("🔄 [CI/CD] Rerunning tests...")
         code_res2, _, _ = healer.run_tests()
         if code_res2 == 0:
-            logger.info("✅ [CI/CD] Баг успешно исправлен ИИ-агентом! HMR активирован.")
+            logger.info("✅ [CI/CD] Bug successfully fixed by the AI agent! HMR activated.")
             healer.record_trajectory(prompt, "MLX Auto-Fix", 1, fixed_code)
         else:
-            logger.info("❌ [CI/CD] ВАЙП. Healer-Morph не справился. Требуется ручной дебаг.")
+            logger.info("❌ [CI/CD] WIPE. Healer-Morph failed. Manual debugging required.")
             healer.record_trajectory(prompt, "MLX Auto-Fix", -1, fixed_code)
     else:
-        logger.info("✅ [CI/CD] Мутация идеальна! 100% покрытие пройдено с первого раза. HMR активирован.")
+        logger.info("✅ [CI/CD] Mutation is perfect! 100% coverage passed on the first try. HMR activated.")

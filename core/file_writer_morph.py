@@ -5,12 +5,12 @@ from workspace_manager import WorkspaceManager
 from core.logger import logger
 
 class FileWriterMorph:
-    """Обособленный воркер для записи файлов, получающий данные через EventBus (P2P)."""
+    """A standalone worker for writing files, receiving data via EventBus (P2P)."""
     def __init__(self):
         self.wm = WorkspaceManager()
 
     async def setup_listeners(self):
-        logger.info("💾 [FileWriter] Подписка на топик записей файловой системы...")
+        logger.info("💾 [FileWriter] Subscribing to the file system write topic...")
         await bus.subscribe("swarm.workspace.write_module", self.on_write_module)
 
     async def on_write_module(self, payload: dict):
@@ -20,7 +20,7 @@ class FileWriterMorph:
         task_id = payload.get("task_id")
         work_dir = payload.get("work_dir")
 
-        logger.info(f"💾 [FileWriter] Получен приказ на запись файлов по P2P шине: {project_name}")
+        logger.info(f"💾 [FileWriter] Received a command to write files via the P2P bus: {project_name}")
         
         created_files = self.wm.extract_multi_file(project_name, multi_file_xml)
         
@@ -37,7 +37,7 @@ class FileWriterMorph:
         with open(os.path.join(target_dir, "GeneratedModule.test.tsx"), "w") as f:
             f.write("import {test} from 'vitest'")
 
-        # Триггерим следующий этап (как и было задумано в P2P архитектуре)
+        # Triggering the next stage (as intended in the P2P architecture)
         await bus.publish("swarm.ui.generated", {
             "task_id": task_id,
             "project_name": project_name,

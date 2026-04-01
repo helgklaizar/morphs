@@ -8,14 +8,14 @@ from core.logger import logger
 @patch("subprocess.run")
 def test_backend_healer_success(mock_subprocess, MockCoreMind):
     mock_mind = MockCoreMind.return_value
-    # Сначала пытаемся починить сломанный код
+    # First, we try to fix the broken code
     mock_mind.think_structured.return_value = {
-        "thought": "Я забыл закрыть скобку, исправляю код...",
+        "thought": "I forgot to close a parenthesis, fixing the code...",
         "code": "logger.info('fixed')"
     }
     
-    # Симолируем, что после первого патча subprocess.run вернул 0 (все отлично)
-    # mock_subprocess.run() первый раз при создании pytest файла вернет 1, потом 0
+    # Simulate that after the first patch, subprocess.run returned 0 (everything is fine)
+    # mock_subprocess.run() will return 1 the first time when creating the pytest file, then 0
     mock_process_fail = MagicMock()
     mock_process_fail.returncode = 1
     mock_process_fail.stdout = "SyntaxError: invalid syntax"
@@ -26,7 +26,7 @@ def test_backend_healer_success(mock_subprocess, MockCoreMind):
     mock_process_success.stdout = "===== 1 passed in 0.01s ====="
     mock_process_success.stderr = ""
     
-    # При вызове subprocess.run: первый вызов падает (1), второй (когда Healer проверяет сам себя) - успешно (0)
+    # When calling subprocess.run: the first call fails (1), the second (when Healer checks itself) - succeeds (0)
     mock_subprocess.side_effect = [mock_process_success]
     
     with tempfile.NamedTemporaryFile("w", delete=False, suffix=".py") as tf:
@@ -36,13 +36,13 @@ def test_backend_healer_success(mock_subprocess, MockCoreMind):
     try:
         healer = BackendHealer(test_file)
         
-        # Мокаем run_pytest чтобы сначала выплюнуть ошибку, потом 0
+        # Mock run_pytest to first return an error, then 0
         with patch.object(healer, 'run_pytest', side_effect=[(1, "SyntaxError", ""), (0, "Success", "")]):
             success = healer.heal_python_code("ImportError: no module named httpx")
             
         assert success is True
         
-        # Проверяем, что файл был перезаписан
+        # Check that the file was overwritten
         with open(test_file, "r") as f:
             fixed_code = f.read()
             assert fixed_code == "logger.info('fixed')"

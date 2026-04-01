@@ -15,7 +15,7 @@ class PostSamplingHooks:
                 try:
                     hook(**kwargs)
                 except Exception as e:
-                    logger.error(f"⚠️ [PostSamplingHook] Ошибка: {e}")
+                    logger.error(f"⚠️ [PostSamplingHook] Error: {e}")
         
         # Fire and forget in a background thread to unblock the main execution
         thread = threading.Thread(target=run_hooks, daemon=True)

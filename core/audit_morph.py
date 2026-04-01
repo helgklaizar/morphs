@@ -78,7 +78,7 @@ class AuditMorph:
                     audit_res["status"] = "WARNING_HIGH_INFLATION"
                     self.health_score -= 15
         except Exception as e:
-            logger.error(f"🔥 [Audit] Ошибка при чтении файла {f}: {e}", exc_info=True)
+            logger.error(f"🔥 [Audit] Error reading file {f}: {e}", exc_info=True)
             
         return audit_res
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     elif duration_str.endswith("h"):
         duration_secs = int(duration_str[:-1]) * 3600
         
-    logger.info(f"🔥 [Audit-Morph] Запуск Хаос-Аудита на {duration_str} (Интенсивность: {args.intensity})...")
+    logger.info(f"🔥 [Audit-Morph] Starting Chaos Audit for {duration_str} (Intensity: {args.intensity})...")
     
     start_time = time.time()
     auditor = AuditMorph(workspace_path="/app/core")
@@ -120,9 +120,9 @@ if __name__ == "__main__":
     async def run_loop():
         iteration = 1
         while time.time() - start_time < duration_secs:
-            logger.info(f"🔄 [Audit-Morph] Итерация хаос-теста #{iteration}")
+            logger.info(f"🔄 [Audit-Morph] Chaos test iteration #{iteration}")
             res = await auditor.run_full_audit()
-            logger.info(f"📊 Результат: Здоровье {res['health_score']}, Статус: {res['status']}")
+            logger.info(f"📊 Result: Health {res['health_score']}, Status: {res['status']}")
             
             # Reset health score for continuous testing
             auditor.health_score = 100
@@ -132,7 +132,7 @@ if __name__ == "__main__":
             await asyncio.sleep(sleep_time)
             iteration += 1
             
-        logger.info("✅ [Audit-Morph] Время вышло. Хаос-аудит успешно завершён.")
+        logger.info("✅ [Audit-Morph] Time is up. Chaos audit completed successfully.")
         
     if args.chaos:
         asyncio.run(run_loop())

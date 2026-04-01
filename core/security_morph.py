@@ -4,9 +4,9 @@ from core.logger import logger
 
 class SecurityMorph:
     """
-    Автоматический Red-Team аудит свежесгенерированных роутеров.
-    Использует нативные тулзы (bandit, npm audit) наряду с LLM моделированием (OWASP)
-    для поиска XSS, SQLi, и Command Injection.
+    Automatic Red-Team audit of freshly generated routers.
+    Uses native tools (bandit, npm audit) along with LLM modeling (OWASP)
+    to find XSS, SQLi, and Command Injection vulnerabilities.
     """
 
     def __init__(self, api_key: str = None):
@@ -24,17 +24,17 @@ class SecurityMorph:
                 pass
 
     def run_pentest(self, target_file_path: str) -> bool:
-        logger.info(f"🛡️ [Security-Morph] Начат гибридный аудит безопасности (Native + Red-Team): {target_file_path}")
+        logger.info(f"🛡️ [Security-Morph] Starting hybrid security audit (Native + Red-Team): {target_file_path}")
         
         if not os.path.exists(target_file_path):
-            logger.info("🛡️ [Security-Morph] Файл не найден.")
+            logger.info("🛡️ [Security-Morph] File not found.")
             return False
 
         with open(target_file_path, "r", encoding="utf-8") as f:
             code = f.read()
 
         native_report = "Native Audit Not Run"
-        # Нативный аудит
+        # Native audit
         if target_file_path.endswith(".py"):
             try:
                 out = subprocess.run(["bandit", "-r", target_file_path, "-l", "-i"], capture_output=True, text=True)
@@ -53,32 +53,32 @@ class SecurityMorph:
                 native_report = "No package.json found, skipping npm audit."
 
         if not self.mind:
-            logger.warning(f"🛡️ [Security-Morph] Нет ИИ движка для триажа уязвимостей. Вывод нативных тулзов:\n{native_report}")
+            logger.warning(f"🛡️ [Security-Morph] No AI engine for vulnerability triage. Native tools output:\n{native_report}")
             return "No issues" in native_report or "0 vulnerabilities" in native_report
 
         prompt = (
-            f"ОПЕРАЦИЯ: Red-Team Аудит исходного кода (OWASP).\n"
-            f"Найди критические уязвимости (SQL Injection, XSS, Command Injection, захардкоженные пароли).\n\n"
-            f"ОТЧЕТ НАТИВНОГО СКАНЕРА (Bandit/npm audit):\n{native_report}\n\n"
-            f"ДЕТАЛИ КОДА:\n```python\n{code}\n```\n"
-            f"Если код и отчет АБСОЛЮТНО БЕЗОПАСНЫ, напиши в <security_status>SAFE</security_status>. "
-            f"Если найдена хотя бы одна уязвимость (даже false positive из отчета, которую ты подтверждаешь кодом), напиши <security_status>VULNERABLE</security_status> "
-            f"и перечисли эксплойты в <thought>."
+            f"OPERATION: Red-Team Source Code Audit (OWASP).\n"
+            f"Find critical vulnerabilities (SQL Injection, XSS, Command Injection, hardcoded passwords).\n\n"
+            f"NATIVE SCANNER REPORT (Bandit/npm audit):\n{native_report}\n\n"
+            f"CODE DETAILS:\n```python\n{code}\n```\n"
+            f"If the code and report are ABSOLUTELY SAFE, write <security_status>SAFE</security_status>. "
+            f"If at least one vulnerability is found (even a false positive from the report that you confirm with the code), write <security_status>VULNERABLE</security_status> "
+            f"and list the exploits in <thought>."
         )
 
-        schema = "<thought>Анализ вектора атак</thought>\n<security_status>SAFE/VULNERABLE</security_status>"
+        schema = "<thought>Attack vector analysis</thought>\n<security_status>SAFE/VULNERABLE</security_status>"
         
         try:
             res = self.mind.think_structured(prompt, schema)
             status = res.get("security_status", "VULNERABLE").strip().upper()
-            thought = res.get("thought", "Нет детального анализа")
+            thought = res.get("thought", "No detailed analysis")
             
             if status == "SAFE":
-                logger.info("✅ [Security-Morph] Аудит пройден. Уязвимостей не найдено.")
+                logger.info("✅ [Security-Morph] Audit passed. No vulnerabilities found.")
                 return True
             else:
-                logger.warning(f"🚨 [Security-Morph] Аудит провален! Найдена уязвимость: {thought[:250]}...")
+                logger.warning(f"🚨 [Security-Morph] Audit failed! Vulnerability found: {thought[:250]}...")
                 return False
         except Exception as e:
-            logger.error(f"💥 [Security-Morph] Ошибка во время моделирования атак: {e}", exc_info=True)
+            logger.error(f"💥 [Security-Morph] Error during attack simulation: {e}", exc_info=True)
             return False

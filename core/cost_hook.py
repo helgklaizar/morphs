@@ -5,8 +5,8 @@ from core.logger import logger
 
 class CostHook:
     """
-    Интеграция механизма трекинга затрат на API (Cost Hook).
-    Жесткий биллинг-контроль и учет лимитов для каждой сессии Swarm/MCTS.
+    Integration of the API cost tracking mechanism (Cost Hook).
+    Strict billing control and limit accounting for each Swarm/MCTS session.
     """
     def __init__(self, limits_file: str = "cost_limits.json"):
         self.limits_file = os.path.join(os.path.dirname(__file__), limits_file)
@@ -14,11 +14,11 @@ class CostHook:
         self.session_cost = 0.0
         self.total_cost = 0.0
         
-        # Стоимость: Gemini 1.5 Pro ($1.25 in / $3.75 out per 1M tokens) => 0.00125 and 0.00375 per 1k
+        # Cost: Gemini 1.5 Pro ($1.25 in / $3.75 out per 1M tokens) => 0.00125 and 0.00375 per 1k
         self.cost_per_1k_prompt = 0.00125
         self.cost_per_1k_completion = 0.00375
         
-        # Лимит сессии $1.50
+        # Session limit $1.50
         self.max_session_cost = 1.50
         
         self._load_state()
@@ -40,7 +40,7 @@ class CostHook:
                     "last_updated": str(datetime.now())
                 }, f)
         except BaseException:
-            pass # Если не смогли сохранить - продолжаем работу
+            pass # If saving fails, continue operation
 
     def add_usage(self, model_name: str, prompt_tokens: int, completion_tokens: int):
         self.session_tokens["prompt"] += prompt_tokens
@@ -53,10 +53,10 @@ class CostHook:
         self.total_cost += cost
         self._save_state()
         
-        logger.info(f"💸 [CostHook] Использовано: {prompt_tokens} in / {completion_tokens} out токенов. Списано: ${cost:.5f} (Сессия: ${self.session_cost:.5f}, Всего: ${self.total_cost:.5f})")
+        logger.info(f"💸 [CostHook] Used: {prompt_tokens} in / {completion_tokens} out tokens. Charged: ${cost:.5f} (Session: ${self.session_cost:.5f}, Total: ${self.total_cost:.5f})")
         
         if self.session_cost >= self.max_session_cost:
-            logger.error("🛑 [CostHook] Достигнут жесткий лимит затрат на сессию! ЭКСТРЕННОЕ ПРЕРЫВАНИЕ API.")
+            logger.error("🛑 [CostHook] Hard session cost limit reached! EMERGENCY API SHUTDOWN.")
             raise RuntimeError(f"Cost limit exceeded: ${self.session_cost} >= ${self.max_session_cost}")
 
 global_cost_manager = CostHook()

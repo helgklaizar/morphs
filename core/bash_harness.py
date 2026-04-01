@@ -42,10 +42,10 @@ class BashHarness:
 
             clf_result = classify_command(input_data.command)
 
-            # CRITICAL → немедленный блок без запроса
+            # CRITICAL → immediate block without prompt
             if clf_result.is_blocked:
                 logger.error(
-                    f"🔴 [YOLO] CRITICAL блок: '{input_data.command}' — {clf_result.reason}"
+                    f"🔴 [YOLO] CRITICAL block: '{input_data.command}' — {clf_result.reason}"
                 )
                 return BashCommandOutput(
                     stdout="",
@@ -55,12 +55,12 @@ class BashHarness:
                     error_message=f"YOLO CRITICAL Block: {clf_result.reason}",
                 )
 
-            # HIGH / MEDIUM → запрос пользователя
+            # HIGH / MEDIUM → user prompt
             if clf_result.requires_confirmation:
                 import os
                 if "PYTEST_CURRENT_TEST" in os.environ or os.environ.get("CI") == "true":
                     logger.warning(
-                        f"🟡 [YOLO] {clf_result.risk_level.value}: '{input_data.command}' — отклонено автотестами."
+                        f"🟡 [YOLO] {clf_result.risk_level.value}: '{input_data.command}' — rejected by autotests."
                     )
                     return BashCommandOutput(
                         stdout="",
@@ -72,21 +72,21 @@ class BashHarness:
                 
                 logger.warning(
                     f"🟡 [YOLO] {clf_result.risk_level.value}: '{input_data.command}' — "
-                    f"{clf_result.reason} [кат: {clf_result.categories}]"
+                    f"{clf_result.reason} [cat: {clf_result.categories}]"
                 )
                 loop = asyncio.get_running_loop()
 
                 def _ask():
                     return ask_user_question(
-                        f"Команда классифицирована как {clf_result.risk_level.value}:\n"
+                        f"Command classified as {clf_result.risk_level.value}:\n"
                         f"`{input_data.command}`\n"
-                        f"Причина: {clf_result.reason}",
-                        options=["Разрешить", "Запретить", "Изменить команду"],
+                        f"Reason: {clf_result.reason}",
+                        options=["Allow", "Deny", "Modify command"],
                     )
 
                 choice_str, modified_cmd = await loop.run_in_executor(None, _ask)
 
-                if "Запретить" in choice_str:
+                if "Deny" in choice_str:
                     return BashCommandOutput(
                         stdout="",
                         stderr="Sandbox Error: Command execution denied by User.",
@@ -96,7 +96,7 @@ class BashHarness:
                     )
                 elif modified_cmd:
                     input_data.command = modified_cmd
-                    logger.info(f"[YOLO] Команда заменена пользователем на: {input_data.command}")
+                    logger.info(f"[YOLO] Command replaced by user with: {input_data.command}")
 
             elif clf_result.risk_level.value == "LOW":
                 logger.warning(f"🔵 [YOLO] LOW risk: '{input_data.command}' — {clf_result.reason}")
@@ -119,31 +119,31 @@ class BashHarness:
         else:
             result = await self._run_async(input_data)
 
-            # ── Prompt Injection Defense на stdout (Task 27) ───────────────
+            # ── Prompt Injection Defense on stdout (Task 27) ───────────────
             if result.stdout and not input_data.dangerously_disable_sandbox:
                 scan = scan_tool_output(result.stdout, source=f"bash:{input_data.command[:60]}")
                 if scan.threat_level == ThreatLevel.INJECTION:
                     from core.logger import logger
                     logger.error(
-                        f"🛡️ [InjectionGuard] Prompt Injection в stdout команды '{input_data.command[:80]}'. "
-                        f"Контент заблокирован. Паттерны: {scan.matched_patterns}"
+                        f"🛡️ [InjectionGuard] Prompt Injection in stdout of command '{input_data.command[:80]}'. "
+                        f"Content blocked. Patterns: {scan.matched_patterns}"
                     )
                     result.stdout = scan.sanitized_content
                     result.stderr = (
-                        f"[INJECTION GUARD] Вывод команды содержал Prompt Injection. "
-                        f"Паттерны: {scan.matched_patterns}. Контент очищен.\n" + result.stderr
+                        f"[INJECTION GUARD] Command output contained Prompt Injection. "
+                        f"Patterns: {scan.matched_patterns}. Content sanitized.\n" + result.stderr
                     )
                 elif scan.threat_level == ThreatLevel.SUSPICIOUS:
                     from core.logger import logger
                     logger.warning(
-                        f"🛡️ [InjectionGuard] Подозрительный вывод команды '{input_data.command[:60]}'. "
-                        f"Score={scan.score:.2f}. Передаётся очищенная версия."
+                        f"🛡️ [InjectionGuard] Suspicious output from command '{input_data.command[:60]}'. "
+                        f"Score={scan.score:.2f}. Passing sanitized version."
                     )
                     result.stdout = scan.sanitized_content
 
-                # ── SystemReminder: инжекция поведенческих директив ──────────
-                # Обогащаем ЧИСТЫЙ stdout <system-reminder> тегами.
-                # LLM воспримет их как contractual behavioural directives.
+                # ── SystemReminder: injection of behavioral directives ──────────
+                # Enriching CLEAN stdout with <system-reminder> tags.
+                # The LLM will perceive them as contractual behavioural directives.
                 result.stdout = inject_reminders(
                     result.stdout,
                     source=f"bash:{input_data.command[:60]}",

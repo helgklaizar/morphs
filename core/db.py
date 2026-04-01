@@ -6,17 +6,17 @@ DB_PATH = "../morphs_system.db"
 SCHEMA_PATH = "../schema.sql"
 
 def init_db():
-    logger.info("💽 Инициализация SQLite (Local-first) базы...")
+    logger.info("💽 Initializing SQLite (Local-first) database...")
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Создание таблиц из schema.sql (если они еще не созданы)
+    # Create tables from schema.sql (if they don't already exist)
     if os.path.exists(SCHEMA_PATH):
         with open(SCHEMA_PATH, 'r') as f:
             schema_script = f.read()
             cursor.executescript(schema_script)
             
-    # Добавляем таблицу подписок (для реализации Free vs PRO модели)
+    # Add a subscriptions table (to implement the Free vs PRO model)
     cursor.executescript("""
         CREATE TABLE IF NOT EXISTS business_profile (
             id TEXT PRIMARY KEY,
@@ -36,7 +36,7 @@ def init_db():
     
     conn.commit()
     conn.close()
-    logger.info("✅ База готова.")
+    logger.info("✅ Database is ready.")
 
 def get_profile():
     conn = sqlite3.connect(DB_PATH)

@@ -1,9 +1,9 @@
 """
-Тесты для Multi-Agent Orchestration:
-- AgentBrief (сборка ТЗ)
+Tests for Multi-Agent Orchestration:
+- AgentBrief (brief assembly)
 - AgentTools lifecycle primitives (spawn/wait/close/sleep/resume)
 - AgentTools IPC SendMessage
-- CronMorph (планировщик с честным sleep)
+- CronMorph (scheduler with honest sleep)
 - WatchdogMorph (healthcheck)
 """
 
@@ -14,7 +14,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 
 
 # ---------------------------------------------------------------------------
-# 1. AgentBrief — сборка ТЗ (Задача 8 & 34)
+# 1. AgentBrief — brief assembly (Task 8 & 34)
 # ---------------------------------------------------------------------------
 
 class TestAgentBrief:
@@ -23,35 +23,35 @@ class TestAgentBrief:
         brief = AgentBrief(
             agent_id="agent-test-01",
             role="Explore",
-            task="Исследуй модуль graph_rag.py",
+            task="Explore the graph_rag.py module",
             project_name="morphs",
             work_dir="/tmp/morphs",
         )
         prompt = brief.to_system_prompt()
         assert "agent-test-01" in prompt
         assert "Explore" in prompt
-        assert "Исследуй модуль graph_rag.py" in prompt
+        assert "Explore the graph_rag.py module" in prompt
         assert "morphs" in prompt
-        # Инструкции роли должны быть включены
-        assert "исследователь" in prompt.lower() or "explore" in prompt.lower()
+        # Role instructions should be included
+        assert "explorer" in prompt.lower() or "explore" in prompt.lower()
 
     def test_brief_includes_all_fields(self):
         from core.agent_briefer import AgentBrief
         brief = AgentBrief(
             agent_id="agent-test-02",
             role="Plan",
-            task="Составь план",
+            task="Create a plan",
             project_name="morphs",
             work_dir="/tmp/morphs",
             context_graph="def foo(): pass",
-            atropos_experience="Ошибка: не импортировать X",
-            memory_summary="Проект использует FastAPI",
+            atropos_experience="Error: do not import X",
+            memory_summary="The project uses FastAPI",
             constraints={"max_cost_usd": 0.5},
             parent_agent_id="orchestrator",
         )
         prompt = brief.to_system_prompt()
         assert "def foo(): pass" in prompt
-        assert "не импортировать X" in prompt
+        assert "do not import X" in prompt
         assert "FastAPI" in prompt
         assert "max_cost_usd" in prompt
         assert "orchestrator" in prompt
@@ -62,7 +62,7 @@ class TestAgentBrief:
         brief = AgentBrief(
             agent_id="agent-json-test",
             role="Execute",
-            task="Реализуй feature X",
+            task="Implement feature X",
             project_name="morphs",
             work_dir="/tmp",
         )
@@ -82,22 +82,22 @@ class TestAgentBrief:
                 work_dir=".",
             )
             prompt = brief.to_system_prompt()
-            # Каждая роль должна давать уникальные инструкции
+            # Each role should provide unique instructions
             assert len(prompt) > 100, f"Role {role} prompt too short"
 
 
 # ---------------------------------------------------------------------------
-# 2. AgentBriefer — фабрика с моками RAG/Atropos/Memory
+# 2. AgentBriefer — factory with mocks for RAG/Atropos/Memory
 # ---------------------------------------------------------------------------
 
 class TestAgentBriefer:
     def test_build_brief_fetches_context(self):
-        """AgentBriefer собирает поля Brief из RAG/Atropos/Memory через sys.modules injection."""
+        """AgentBriefer collects Brief fields from RAG/Atropos/Memory via sys.modules injection."""
         import sys
         from unittest.mock import MagicMock
 
-        # Создаём fake-модули c нужными классами
-        # прямо в sys.modules — lazy import внутри AgentBriefer.build_brief подхватит их
+        # Create fake modules with the necessary classes
+        # directly in sys.modules — the lazy import inside AgentBriefer.build_brief will pick them up
         fake_lens_inst = MagicMock()
         fake_lens_inst.get_context_for_prompt.return_value = "RAG context data"
         fake_lens_cls = MagicMock(return_value=fake_lens_inst)
@@ -119,7 +119,7 @@ class TestAgentBriefer:
         fake_memory_mod = MagicMock()
         fake_memory_mod.MemoryMorph = fake_memory_cls
 
-        # Инъекция напрямую в sys.modules
+        # Direct injection into sys.modules
         orig_graph = sys.modules.get("core.graph_rag")
         orig_atropos = sys.modules.get("core.atropos_memory")
         orig_memory = sys.modules.get("core.memory_morph")
@@ -136,7 +136,7 @@ class TestAgentBriefer:
                 task="Explore the codebase",
             )
         finally:
-            # Восстанавливаем исходные модули
+            # Restore the original modules
             if orig_graph is not None:
                 sys.modules["core.graph_rag"] = orig_graph
             else:
@@ -153,17 +153,17 @@ class TestAgentBriefer:
         assert brief.agent_id == "agent-abc"
         assert brief.role == "Explore"
         assert brief.constraints["max_cost_usd"] == 1.5
-        # RAG/Atropos/Memory загружены через sys.modules — поля должны быть заполнены
+        # RAG/Atropos/Memory are loaded via sys.modules — the fields should be populated
         assert brief.context_graph == "RAG context data"
         assert brief.atropos_experience == "Don't repeat mistake X"
         assert brief.memory_summary == "Memory: uses FastAPI"
 
 
     def test_build_brief_handles_failures_gracefully(self):
-        """RAG/Atropos/Memory недоступны — Brief всё равно собирается (пустые строки)."""
+        """RAG/Atropos/Memory are unavailable — Brief is still assembled (with empty strings)."""
         from core.agent_briefer import AgentBriefer
-        # Graceful degradation: если RAG недоступен,
-        # функция не бросает исключение — просто оставляет поля пустыми
+        # Graceful degradation: if RAG is unavailable,
+        # the function does not throw an exception — it just leaves the fields empty
         briefer = AgentBriefer(work_dir="/nonexistent/path", project_name="test")
         brief = briefer.build_brief(
             agent_id="agent-fallback",
@@ -179,11 +179,11 @@ class TestAgentBriefer:
         assert brief.role == "Plan"
 
     def test_build_explore_plan_team_creates_two_briefs(self):
-        """build_explore_plan_team должен вернуть два Brief с ролями Explore и Plan."""
+        """build_explore_plan_team should return two Briefs with Explore and Plan roles."""
         from core.agent_briefer import AgentBriefer
         briefer = AgentBriefer(work_dir="/tmp", project_name="morphs")
 
-        # Враппер с явными дефолтами — без дублирования kwargs
+        # Wrapper with explicit defaults — without duplicating kwargs
         original_build = briefer.build_brief
 
         def no_fetch_build(agent_id, role, task, parent_agent_id=None,
@@ -212,7 +212,7 @@ class TestAgentBriefer:
 
 
 # ---------------------------------------------------------------------------
-# 3. AgentTools — Lifecycle Primitives (Задача 35)
+# 3. AgentTools — Lifecycle Primitives (Task 35)
 # ---------------------------------------------------------------------------
 
 class TestAgentToolsLifecycle:
@@ -248,7 +248,7 @@ class TestAgentToolsLifecycle:
             # Spawn first
             await AgentTools.spawn_agent(role="Plan", task_brief="Plan X")
 
-            # Найдём последний созданный агент
+            # Find the last created agent
             assert len(AgentRegistry.agents) > 0
             aid = list(AgentRegistry.agents.keys())[-1]
 
@@ -268,7 +268,7 @@ class TestAgentToolsLifecycle:
             await AgentTools.spawn_agent(role="Audit", task_brief="Audit X")
             aid = list(AgentRegistry.agents.keys())[-1]
 
-            # Агент никогда не закроется — должен быть timeout
+            # The agent will never close — there should be a timeout
             result = await AgentTools.wait_agent(aid, timeout_seconds=1)
             assert "Timeout" in result
 
@@ -279,7 +279,7 @@ class TestAgentToolsLifecycle:
             await AgentTools.spawn_agent(role="Watchdog", task_brief="Watch X")
             aid = list(AgentRegistry.agents.keys())[-1]
 
-            # Закроем агента через 0.2с в фоне
+            # Close the agent after 0.2s in the background
             async def close_later():
                 await asyncio.sleep(0.2)
                 AgentRegistry.agents[aid]["status"] = "closed"
@@ -302,7 +302,7 @@ class TestAgentToolsLifecycle:
 
 
 # ---------------------------------------------------------------------------
-# 4. IPC SendMessage (Задача 25)
+# 4. IPC SendMessage (Task 25)
 # ---------------------------------------------------------------------------
 
 class TestIPCSendMessage:
@@ -319,7 +319,7 @@ class TestIPCSendMessage:
             )
             assert "Success" in result
 
-            # Проверяем, что сообщение в очереди
+            # Check that the message is in the queue
             msg = await asyncio.wait_for(
                 AgentRegistry.agents[aid]["mailbox"].get(), timeout=1.0
             )
@@ -341,14 +341,14 @@ class TestIPCSendMessage:
             aid = list(AgentRegistry.agents.keys())[-1]
 
             await AgentTools.send_message(aid, "Direct P2P message")
-            # Должен быть вызван publish с IPC-топиком
+            # Publish should be called with the IPC topic
             calls = [str(c) for c in mock_bus.publish.call_args_list]
             ipc_calls = [c for c in calls if "ipc" in c]
             assert len(ipc_calls) > 0
 
 
 # ---------------------------------------------------------------------------
-# 5. CronMorph — Планировщик с честным sleep (Задача 26)
+# 5. CronMorph — Scheduler with honest sleep (Task 26)
 # ---------------------------------------------------------------------------
 
 class TestCronMorph:
@@ -361,12 +361,12 @@ class TestCronMorph:
             call_count += 1
 
         cron = CronMorph()
-        cron._tick_interval = 0.01   # быстрый тик для теста
+        cron._tick_interval = 0.01   # fast tick for the test
         cron.register("test_job", interval_seconds=0, coro_factory=increment)
 
-        # max_seconds=0 означает: остановить после первого же тика (interval=0)
+        # max_seconds=0 means: stop after the very first tick (interval=0)
         await cron.run(max_seconds=0)
-        # Задание запустились хотя бы 1 раз
+        # The job started at least once
         assert call_count >= 1
 
 
@@ -378,7 +378,7 @@ class TestCronMorph:
         start = time.time()
         await cron.run(max_seconds=1)
         elapsed = time.time() - start
-        # Должен остановиться через ~1 секунду
+        # Should stop after ~1 second
         assert elapsed < 2.5
 
     async def test_cron_job_exception_does_not_crash(self):
@@ -390,7 +390,7 @@ class TestCronMorph:
         cron = CronMorph()
         cron._tick_interval = 0.05
         cron.register("broken", interval_seconds=0, coro_factory=broken_job)
-        # Не должно бросать исключение наружу
+        # Should not throw an exception outwards
         await cron.run(max_seconds=0)
 
     async def test_cron_unregister(self):
@@ -408,7 +408,7 @@ class TestCronMorph:
 
 
 # ---------------------------------------------------------------------------
-# 6. WatchdogMorph — healthcheck (Задача 26)
+# 6. WatchdogMorph — healthcheck (Task 26)
 # ---------------------------------------------------------------------------
 
 class TestWatchdogMorph:
@@ -456,13 +456,13 @@ class TestWatchdogMorph:
                 watchdog._cron._tick_interval = 0.05
                 await watchdog.watch(duration_seconds=0)
 
-                # Публикации alert быть не должно
+                # There should be no alert publication
                 for call in mock_bus.publish.call_args_list:
                     assert "alert" not in str(call)
 
 
 # ---------------------------------------------------------------------------
-# 7. ping_url — unit тест без реального сервера (aiohttp замокан)
+# 7. ping_url — unit test without a real server (aiohttp is mocked)
 # ---------------------------------------------------------------------------
 
 class TestPingUrl:

@@ -8,8 +8,8 @@ from core.tools.concurrent_tools import get_engine, ToolConcurrencyEngine
 class ToolRegistryMorph:
     """
     Port Manifests (Claw-Code port)
-    Сканирует и динамически экспортирует доступные тулзы, передавая их Рою.
-    Защищает от галлюцинаций (ИИ точно знает свои API).
+    Scans and dynamically exports available tools, passing them to the Swarm.
+    Protects against hallucinations (the AI knows its APIs precisely).
     Includes Lazy Tool Search & Permissions filtering (Sprint 20).
     """
     def __init__(self, permission_context=None):
@@ -18,10 +18,10 @@ class ToolRegistryMorph:
         from core.permissions import ToolPermissionContext
         self.permissions = permission_context or ToolPermissionContext()
 
-        # Авто-регистрация строгих File Tools вместо свободного Bash
+        # Auto-register strict File Tools instead of free-form Bash
         self._register_internal_file_tools()
         
-        # Регистрация агентов и примитивов Swarm Lifecycle
+        # Register agents and Swarm Lifecycle primitives
         self._register_internal_agent_tools()
 
         # Task 32: LSP (Language Server Protocol)
@@ -110,7 +110,7 @@ class ToolRegistryMorph:
 
     def register_tool(self, name: str, func: Callable, description: str, is_dangerous: bool = False):
         if self.permissions.is_blocked(name):
-            logger.info(f"🚫 [Tool-Registry] Инструмент '{name}' ЗАБЛОКИРОВАН политиками безопасности (ToolPermissionContext).")
+            logger.info(f"🚫 [Tool-Registry] Tool '{name}' is BLOCKED by security policies (ToolPermissionContext).")
             return
             
         sig = inspect.signature(func)
@@ -126,19 +126,19 @@ class ToolRegistryMorph:
             "parameters": params,
             "is_dangerous": is_dangerous,
             "requires_user_confirmation": self.permissions.needs_confirmation(name),
-            "mcp_server": None, # Локальный тулз
-            "func": func  # Сохраняем ссылку для локального вызова
+            "mcp_server": None, # Local tool
+            "func": func  # Save the reference for local invocation
         }
-        logger.info(f"🛠️ [Tool-Registry] Локальный инструмент '{name}' зарегистрирован.")
+        logger.info(f"🛠️ [Tool-Registry] Local tool '{name}' has been registered.")
 
     def register_mcp_namespace(self, server_name: str, mcp_tools_list: list):
-        """Регистрирует инструменты из ответа MCP сервера tools/list"""
+        """Registers tools from the MCP server's tools/list response"""
         count = 0
         for tool in mcp_tools_list:
             t_name = f"{server_name}_{tool.get('name')}"
             
             if self.permissions.is_blocked(t_name):
-                logger.info(f"🚫 [Tool-Registry] MCP-тулз '{t_name}' ЗАБЛОКИРОВАН политиками (ToolPermissionContext).")
+                logger.info(f"🚫 [Tool-Registry] MCP tool '{t_name}' is BLOCKED by policies (ToolPermissionContext).")
                 continue
                 
             params = []
@@ -153,18 +153,18 @@ class ToolRegistryMorph:
             self.registry[t_name] = {
                 "description": tool.get('description', ''),
                 "parameters": params,
-                "is_dangerous": True, # MCP-тулзы всегда опасные
+                "is_dangerous": True, # MCP tools are always dangerous
                 "requires_user_confirmation": self.permissions.needs_confirmation(t_name),
                 "mcp_server": server_name,
                 "mcp_original_name": tool.get('name')
             }
             count += 1
-        logger.info(f"🌐 [Tool-Registry] Зарегистрировано {count} плагинов из MCP сервера '{server_name}'.")
+        logger.info(f"🌐 [Tool-Registry] Registered {count} plugins from MCP server '{server_name}'.")
 
     def search_tools(self, query: str, limit: int = 5) -> str:
         """
         [Lazy Tool Search] (Task 13) 
-        Ищет тулзы по описанию, чтобы не раздувать System Prompt.
+        Searches for tools by description to avoid bloating the System Prompt.
         """
         import difflib
         q = query.lower()
@@ -196,7 +196,7 @@ class ToolRegistryMorph:
         return out
 
     def get_allowed_tools_manifest(self) -> dict:
-        """Возвращает только разрешенные и безопасные тулзы."""
+        """Returns only allowed and safe tools."""
         allowed = {}
         for name, meta in self.registry.items():
             if not self.permissions.is_blocked(name):
@@ -216,19 +216,19 @@ class ToolRegistryMorph:
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(self.export_manifest())
-        logger.info(f"📄 [Tool-Registry] Манифест тулзов успешно сброшен в {filepath}.")
+        logger.info(f"📄 [Tool-Registry] Tool manifest successfully saved to {filepath}.")
 
     def get_sandboxed_executor(self):
-        """Возвращает SandboxedToolExecutor для безопасного вызова тулзов с Denial Flow."""
+        """Returns a SandboxedToolExecutor for safe tool invocation with Denial Flow."""
         from core.tools.denial_handler import SandboxedToolExecutor
         return SandboxedToolExecutor(self, self.permissions)
 
     def start_concurrency_engine(self):
-        """Запускает фоновый MutationQueue worker."""
+        """Starts the background MutationQueue worker."""
         self.concurrency_engine.start()
         logger.info("⚡ [Tool-Registry] ConcurrencyEngine started.")
 
     def stop_concurrency_engine(self):
-        """Останавливает ConcurrencyEngine при shutdown."""
+        """Stops the ConcurrencyEngine on shutdown."""
         self.concurrency_engine.stop()
         logger.info("🛑 [Tool-Registry] ConcurrencyEngine stopped.")

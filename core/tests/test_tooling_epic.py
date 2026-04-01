@@ -1,6 +1,6 @@
 """
-test_tooling_epic.py — Тесты для Эпика "Tooling & Execution Engine"
-Покрывает Tasks 32, 33, 12/36, 29/30
+test_tooling_epic.py — Tests for the "Tooling & Execution Engine" Epic
+Covers Tasks 32, 33, 12/36, 29/30
 """
 import asyncio
 import pytest
@@ -14,7 +14,7 @@ from pathlib import Path
 # ─── Task 32: LSP Tool ────────────────────────────────────────────────────────
 
 class TestLSPTool:
-    """Тесты для lsp_tool.py — language server integration."""
+    """Tests for lsp_tool.py — language server integration."""
 
     def test_lsp_client_init(self):
         from core.tools.lsp_tool import LSPClient
@@ -27,10 +27,10 @@ class TestLSPTool:
         from core.tools.lsp_tool import LSPClient
         client = LSPClient(["nonexistent-lsp-server-12345", "--stdio"], "file:///tmp")
         result = client.start()
-        assert result is False  # Должен упасть gracefully, не кидать исключение
+        assert result is False  # Should fail gracefully, not raise an exception
 
     def test_lsp_tool_find_symbol_no_server(self, monkeypatch):
-        """Если LSP сервер недоступен — возвращает понятную ошибку."""
+        """If the LSP server is unavailable, it should return a clear error."""
         from core.tools.lsp_tool import LSPTool
         monkeypatch.setattr(LSPTool, '_get_client', lambda *args: None)
         result = LSPTool.find_symbol("SomeClass", "/tmp")
@@ -38,7 +38,7 @@ class TestLSPTool:
         assert "pyright" in result.lower() or "install" in result.lower()
 
     def test_lsp_tool_find_symbol_with_mock_client(self, monkeypatch):
-        """Проверяем форматирование вывода при наличии результатов от LSP."""
+        """Check the output formatting when there are results from LSP."""
         from core.tools.lsp_tool import LSPTool
         
         class DummyProc:
@@ -107,7 +107,7 @@ class TestLSPTool:
 # ─── Task 33: Git Worktree ────────────────────────────────────────────────────
 
 class TestWorktreeTools:
-    """Тесты для worktree_ops.py."""
+    """Tests for worktree_ops.py."""
 
     def test_worktree_tools_import(self):
         from core.tools.worktree_ops import WorktreeTools, WorktreeRegistry
@@ -115,7 +115,7 @@ class TestWorktreeTools:
         assert WorktreeRegistry is not None
 
     def test_enter_worktree_non_git_dir(self, tmp_path):
-        """Не-git директория должна вернуть ошибку."""
+        """A non-git directory should return an error."""
         from core.tools.worktree_ops import WorktreeTools
         non_git = str(tmp_path)
         result = WorktreeTools.enter_worktree(non_git)
@@ -138,15 +138,15 @@ class TestWorktreeTools:
         assert "Error" in result
 
     def test_enter_exit_worktree_git_repo(self, tmp_path):
-        """Полный цикл Enter → Exit в реальном git репо."""
+        """Full cycle Enter → Exit in a real git repo."""
         from core.tools.worktree_ops import WorktreeTools, WorktreeRegistry
 
-        # Инициализируем git репо
+        # Initialize a git repo
         subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True)
         subprocess.run(["git", "config", "user.email", "test@test.com"], cwd=str(tmp_path), capture_output=True)
         subprocess.run(["git", "config", "user.name", "Test"], cwd=str(tmp_path), capture_output=True)
 
-        # Создаём начальный коммит (без него worktree add не работает)
+        # Create an initial commit (worktree add doesn't work without it)
         (tmp_path / "README.md").write_text("init")
         subprocess.run(["git", "add", "."], cwd=str(tmp_path), capture_output=True)
         subprocess.run(["git", "commit", "-m", "init"], cwd=str(tmp_path), capture_output=True)
@@ -156,7 +156,7 @@ class TestWorktreeTools:
         if "Error" in enter_result:
             pytest.skip(f"Git worktree not supported in this env: {enter_result}")
 
-        # Извлекаем session_id из ответа
+        # Extract session_id from the response
         session_id = None
         for line in enter_result.splitlines():
             if "session_id" in line:
@@ -169,7 +169,7 @@ class TestWorktreeTools:
         wt_path = WorktreeTools.get_worktree_path(session_id)
         assert os.path.isdir(wt_path)
 
-        # Выход без применения изменений
+        # Exit without applying changes
         exit_result = WorktreeTools.exit_worktree(session_id, apply_changes=False)
         assert "Success" in exit_result
         assert session_id not in WorktreeRegistry._sessions
@@ -178,7 +178,7 @@ class TestWorktreeTools:
 # ─── Task 12 & 36: Tool Concurrency ──────────────────────────────────────────
 
 class TestToolConcurrency:
-    """Тесты для concurrent_tools.py."""
+    """Tests for concurrent_tools.py."""
 
     def test_imports(self):
         from core.tools.concurrent_tools import (
@@ -218,7 +218,7 @@ class TestToolConcurrency:
         await write_many()
         log = memory.get_log()
         assert len(log) == 10
-        # Все записи должны быть в логе без дублей
+        # All entries should be in the log without duplicates
         ids = [e["call_id"] for e in log]
         assert len(ids) == len(set(ids))
 
@@ -261,11 +261,11 @@ class TestToolConcurrency:
             }),
         ]
         results = await batcher.run_batch(calls)
-        # Только read_file должен выполниться в batch
+        # Only read_file should be executed in the batch
         read_call = calls[0]
         edit_call = calls[1]
         assert read_call.call_id in results
-        assert edit_call.call_id not in results  # mutation пропущена
+        assert edit_call.call_id not in results  # mutation skipped
 
     @pytest.mark.asyncio
     async def test_mutation_queue_sequential_order(self):
@@ -294,7 +294,7 @@ class TestToolConcurrency:
         queue.stop()
 
         assert len(execution_order) == 5
-        # Порядок должен совпадать (FIFO)
+        # The order should match (FIFO)
         assert execution_order == [f"mutation_{i}" for i in range(5)]
 
     @pytest.mark.asyncio
@@ -331,13 +331,13 @@ class TestToolConcurrency:
         from core.tools.concurrent_tools import get_engine, _engine
         e1 = get_engine()
         e2 = get_engine()
-        assert e1 is e2  # синглтон
+        assert e1 is e2  # singleton
 
 
 # ─── Task 29 & 30: Tool Denial ────────────────────────────────────────────────
 
 class TestDenialHandler:
-    """Тесты для denial_handler.py."""
+    """Tests for denial_handler.py."""
 
     def test_imports(self):
         from core.tools.denial_handler import (
@@ -361,7 +361,7 @@ class TestDenialHandler:
         assert "grep_search" in ctx.alternatives
 
     def test_handle_denial_allow_anyway(self, monkeypatch):
-        """Симуляция выбора A (Allow) пользователем."""
+        """Simulation of user selecting A (Allow)."""
         from core.tools.denial_handler import ToolDenialHandler, DenialAction, DenialContext
         import core.tools.denial_handler
 
@@ -376,7 +376,7 @@ class TestDenialHandler:
         assert resolution.action == DenialAction.ALLOW_ANYWAY
 
     def test_handle_denial_skip(self, monkeypatch):
-        """Симуляция выбора C (Skip)."""
+        """Simulation of selecting C (Skip)."""
         from core.tools.denial_handler import ToolDenialHandler, DenialAction, DenialContext
         import core.tools.denial_handler
 
@@ -386,7 +386,7 @@ class TestDenialHandler:
         assert resolution.action == DenialAction.SKIP
 
     def test_handle_denial_custom_input(self, monkeypatch):
-        """Симуляция выбора D (Custom) с вводом кастомного значения."""
+        """Simulation of selecting D (Custom) with custom value input."""
         from core.tools.denial_handler import ToolDenialHandler, DenialAction, DenialContext
         import core.tools.denial_handler
 
@@ -397,7 +397,7 @@ class TestDenialHandler:
         assert resolution.custom_value == "ls -la"
 
     def test_handle_denial_abort_task(self, monkeypatch):
-        """Симуляция выбора E (Abort)."""
+        """Simulation of selecting E (Abort)."""
         from core.tools.denial_handler import ToolDenialHandler, DenialAction, DenialContext
         import core.tools.denial_handler
 
@@ -408,7 +408,7 @@ class TestDenialHandler:
 
     @pytest.mark.asyncio
     async def test_sandboxed_executor_calls_allowed_tool(self):
-        """Незаблокированная тулза вызывается напрямую без Denial Flow."""
+        """An unblocked tool is called directly without the Denial Flow."""
         from core.tools.denial_handler import SandboxedToolExecutor
         from core.permissions import ToolPermissionContext
 
@@ -430,7 +430,7 @@ class TestDenialHandler:
 
     @pytest.mark.asyncio
     async def test_sandboxed_executor_forces_ask_user_on_block(self, monkeypatch):
-        """Заблокированная тулза -> форсирует AskUser -> Skip."""
+        """Blocked tool -> forces AskUser -> Skip."""
         from core.tools.denial_handler import SandboxedToolExecutor, DenialAction
         from core.permissions import ToolPermissionContext
         import core.tools.denial_handler
@@ -454,7 +454,7 @@ class TestDenialHandler:
 
     @pytest.mark.asyncio
     async def test_sandboxed_executor_abort_raises(self, monkeypatch):
-        """Выбор Abort → RuntimeError."""
+        """Selecting Abort → RuntimeError."""
         from core.tools.denial_handler import SandboxedToolExecutor
         from core.permissions import ToolPermissionContext
         import core.tools.denial_handler
@@ -473,7 +473,7 @@ class TestDenialHandler:
             await executor.safe_call("dangerous_tool")
 
     def test_ask_user_tool_returns_choice(self, monkeypatch):
-        """AskUserTool корректно возвращает буквенный выбираемый вариант."""
+        """AskUserTool correctly returns the letter choice."""
         from core.tools.denial_handler import AskUserTool
         import core.tools.denial_handler
 
@@ -482,7 +482,7 @@ class TestDenialHandler:
         assert result == "A"
 
     def test_ask_user_tool_returns_custom(self, monkeypatch):
-        """AskUserTool возвращает кастомный ввод."""
+        """AskUserTool returns custom input."""
         from core.tools.denial_handler import AskUserTool
         import core.tools.denial_handler
 
@@ -491,10 +491,10 @@ class TestDenialHandler:
         assert "my_custom_value" in result
 
 
-# ─── Integration: ToolRegistryMorph с новыми тулзами ──────────────────────────
+# ─── Integration: ToolRegistryMorph with new tools ──────────────────────────
 
 class TestToolRegistryIntegration:
-    """Проверяем что все новые тулзы зарегистрированы."""
+    """Check that all new tools are registered."""
 
     def test_new_tools_registered(self):
         from core.tool_registry_morph import ToolRegistryMorph

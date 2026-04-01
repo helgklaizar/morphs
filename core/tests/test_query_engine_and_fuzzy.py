@@ -1,13 +1,13 @@
-"""Тесты для QueryEngine (Task 5) и FuzzyIndex (Task 11)."""
+"""Tests for QueryEngine (Task 5) and FuzzyIndex (Task 11)."""
 import os
 import pytest
 from unittest.mock import MagicMock, patch
 
 
-# ── QueryEngine тесты ──────────────────────────────────────────────────────
+# ── QueryEngine tests ──────────────────────────────────────────────────────
 
 class TestQueryEngine:
-    """Тесты для QueryEngine фасада."""
+    """Tests for the QueryEngine facade."""
 
     def test_import(self):
         from core.query_engine import QueryEngine
@@ -16,7 +16,7 @@ class TestQueryEngine:
     def test_init_lazy(self, tmp_path):
         from core.query_engine import QueryEngine
         engine = QueryEngine(str(tmp_path))
-        # Lazy — соединения не открыты до первого вызова
+        # Lazy — connections are not opened until the first call
         assert engine._lance_db is None
         assert engine._kuzu_conn is None
         assert engine._embed_model is None
@@ -24,7 +24,7 @@ class TestQueryEngine:
     def test_search_no_table_returns_empty(self, tmp_path):
         from core.query_engine import QueryEngine
         engine = QueryEngine(str(tmp_path))
-        # LanceDB пустая — должна вернуть []
+        # LanceDB is empty — should return []
         results = engine.search("auth router")
         assert results == []
 
@@ -44,7 +44,7 @@ class TestQueryEngine:
         from core.query_engine import HybridResult
         hr = HybridResult()
         ctx = hr.to_prompt_context()
-        assert "Контекст не найден" in ctx
+        assert "Context not found" in ctx
 
     def test_hybrid_result_to_prompt_context_with_vectors(self):
         from core.query_engine import HybridResult, VectorResult
@@ -70,13 +70,13 @@ class TestQueryEngine:
         from core.query_engine import QueryEngine
         engine = QueryEngine(str(tmp_path))
         results = engine.search_experience("ImportError: cannot import module")
-        assert results == []  # нет таблицы → пустой список, не исключение
+        assert results == []  # no table → empty list, not an exception
 
 
-# ── FuzzyIndex тесты ──────────────────────────────────────────────────────
+# ── FuzzyIndex tests ──────────────────────────────────────────────────────
 
 class TestFuzzyIndex:
-    """Тесты для FuzzyIndex (in-memory git ls-files + ripgrep)."""
+    """Tests for FuzzyIndex (in-memory git ls-files + ripgrep)."""
 
     def test_import(self):
         from core.fuzzy_index import FuzzyIndex
@@ -93,13 +93,13 @@ class TestFuzzyIndex:
         assert cm.line_number == 42
 
     def test_search_real_project(self):
-        """Тест на реальном проекте — должен найти файлы по запросу."""
+        """Test on a real project — should find files based on the query."""
         from core.fuzzy_index import FuzzyIndex
         workspace = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         idx = FuzzyIndex(workspace)
         results = idx.search("bash_harness", limit=5)
         assert len(results) > 0
-        # Должны найти bash_harness.py
+        # Should find bash_harness.py
         paths = [r.path for r in results]
         assert any("bash_harness" in p for p in paths)
 
@@ -108,9 +108,9 @@ class TestFuzzyIndex:
         workspace = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         idx = FuzzyIndex(workspace)
         results = idx.search("query", limit=20, extensions=[".py"])
-        # Все результаты должны быть .py файлами
+        # All results should be .py files
         for r in results:
-            assert r.path.endswith(".py"), f"Неожиданное расширение: {r.path}"
+            assert r.path.endswith(".py"), f"Unexpected extension: {r.path}"
 
     def test_search_returns_sorted_by_score(self):
         from core.fuzzy_index import FuzzyIndex
@@ -118,7 +118,7 @@ class TestFuzzyIndex:
         idx = FuzzyIndex(workspace)
         results = idx.search("graph_rag", limit=10)
         if len(results) > 1:
-            # Отсортированы по убыванию score
+            # Sorted in descending order of score
             scores = [r.score for r in results]
             assert scores == sorted(scores, reverse=True)
 
@@ -127,13 +127,13 @@ class TestFuzzyIndex:
         workspace = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         idx = FuzzyIndex(workspace)
         results = idx.search("xyzzy_notexist_12345", limit=50, min_score=0.9)
-        # Абсурдный запрос не должен ничего найти выше 0.9
+        # An absurd query should not find anything above 0.9
         assert len(results) == 0
 
     def test_rg_search_finds_content(self):
         import shutil
         if not shutil.which("rg"):
-            pytest.skip("ripgrep (rg) не установлен на этой системе")
+            pytest.skip("ripgrep (rg) is not installed on this system")
         from core.fuzzy_index import FuzzyIndex
         workspace = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         idx = FuzzyIndex(workspace)
@@ -145,7 +145,7 @@ class TestFuzzyIndex:
         from core.fuzzy_index import FuzzyIndex
         workspace = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
         idx = FuzzyIndex(workspace)
-        idx.search("main")  # Заполняем кеш
+        idx.search("main")  # Populating the cache
         assert len(idx._file_cache) > 0
         idx.invalidate_cache()
         assert idx._cache_timestamp == 0.0

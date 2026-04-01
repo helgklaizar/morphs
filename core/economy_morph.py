@@ -5,16 +5,16 @@ from core.logger import logger
 
 class EconomyMorph:
     """
-    Multi-Agent Economy (Токеномика).
-    Управляет внутренним бюджетом агентов.
-    Если задача становится слишком сложной или агент Healer-Morph уходит в бесконечный цикл,
-    бюджет заканчивается и задача отменяется (Банкротство).
+    Multi-Agent Economy (Tokenomics).
+    Manages the internal budget of agents.
+    If a task becomes too complex or the Healer-Morph agent enters an infinite loop,
+    the budget runs out and the task is canceled (Bankruptcy).
     """
     
     PRICE_LIST = {
-        "architect_review": 10,  # Обычная проверка
-        "coder_generate": 30,    # Написание нового компонента
-        "healer_fix": 50,        # Хилер стоит дорого, чтобы ИИ старался не ошибаться
+        "architect_review": 10,  # Regular review
+        "coder_generate": 30,    # Writing a new component
+        "healer_fix": 50,        # Healer is expensive to encourage the AI to avoid mistakes
         "security_audit": 15,
         "browser_e2e": 25
     }
@@ -27,10 +27,10 @@ class EconomyMorph:
         return os.path.join(self.tasks_dir, task_id, "finance.json")
 
     def init_task_budget(self, task_id: str, initial_credits: int = 500) -> dict:
-        """Выделение гранта (Credits) на новую задачу."""
+        """Allocates a grant (Credits) for a new task."""
         finance_file = self._get_budget_file(task_id)
         
-        # Если папка таски еще не создана, не падаем
+        # If the task folder doesn't exist yet, don't fail
         os.makedirs(os.path.dirname(finance_file), exist_ok=True)
         
         state = {
@@ -42,26 +42,26 @@ class EconomyMorph:
         with open(finance_file, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=4)
             
-        logger.info(f"💰 [Economy-Morph] Выделен бюджет {initial_credits} 🪙 для Задачи: {task_id}")
+        logger.info(f"💰 [Economy-Morph] Budget of {initial_credits} 🪙 allocated for Task: {task_id}")
         return state
 
     def charge(self, task_id: str, action_type: str, agent_name: str) -> bool:
         """
-        Списывает кредиты за операцию агента.
-        Возвращает True, если транзакция успешна (денег хватает). Возвращает False — Банкрот.
+        Charges credits for an agent's operation.
+        Returns True if the transaction is successful (enough money). Returns False — Bankrupt.
         """
         finance_file = self._get_budget_file(task_id)
         if not os.path.exists(finance_file):
-            logger.info(f"⚠️ [Economy-Morph] Бюджет для {task_id} не найден. Работаем в кредит.")
+            logger.info(f"⚠️ [Economy-Morph] Budget for {task_id} not found. Working on credit.")
             return True
             
         with open(finance_file, "r", encoding="utf-8") as f:
             state = json.load(f)
             
-        cost = self.PRICE_LIST.get(action_type, 10)  # Дефолт 10
+        cost = self.PRICE_LIST.get(action_type, 10)  # Default 10
         
         if state["current_balance"] < cost:
-            logger.info(f"💀 [Economy-Morph] БАНКРОТСТВО ({task_id}): {agent_name} попытался списать {cost} 🪙, но осталось лишь {state['current_balance']} 🪙.")
+            logger.info(f"💀 [Economy-Morph] BANKRUPTCY ({task_id}): {agent_name} tried to charge {cost} 🪙, but only {state['current_balance']} 🪙 remains.")
             return False
             
         state["current_balance"] -= cost
@@ -78,7 +78,7 @@ class EconomyMorph:
         with open(finance_file, "w", encoding="utf-8") as f:
             json.dump(state, f, indent=4)
             
-        logger.info(f"💸 [Economy-Morph] Оплата {cost} 🪙 Агенту {agent_name} за '{action_type}'. Остаток: {state['current_balance']} 🪙")
+        logger.info(f"💸 [Economy-Morph] Payment of {cost} 🪙 to Agent {agent_name} for '{action_type}'. Balance: {state['current_balance']} 🪙")
         return True
 
     def get_financial_report(self, task_id: str):
@@ -93,5 +93,5 @@ if __name__ == "__main__":
     economy.init_task_budget("T-123", 200)
     economy.charge("T-123", "coder_generate", "UI-Coder")
     economy.charge("T-123", "healer_fix", "Healer-Morph")
-    economy.charge("T-123", "healer_fix", "Healer-Morph") # Третий раз сломается или будет близко к банкротству
-    economy.charge("T-123", "healer_fix", "Healer-Morph") # <-- БАНКРОТ
+    economy.charge("T-123", "healer_fix", "Healer-Morph") # The third time it will break or be close to bankruptcy
+    economy.charge("T-123", "healer_fix", "Healer-Morph") # <-- BANKRUPT

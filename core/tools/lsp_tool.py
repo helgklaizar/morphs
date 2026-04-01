@@ -1,7 +1,7 @@
 """
 lsp_tool.py — Task 32: Language Server Protocol Tool
-Интегрирует Pyright (Python) и TSServer (TypeScript) как тулзу LSP
-для умного поиска символов и референсов вместо grep.
+Integrates Pyright (Python) and TSServer (TypeScript) as an LSP tool
+for smart symbol and reference search instead of grep.
 """
 import json
 import os
@@ -16,8 +16,8 @@ from core.logger import logger
 
 class LSPClient:
     """
-    Минимальный LSP-клиент поверх JSON-RPC stdio.
-    Запускает language server как subprocess и общается по stdin/stdout.
+    A minimal LSP client over JSON-RPC stdio.
+    Runs a language server as a subprocess and communicates via stdin/stdout.
     """
     def __init__(self, cmd: list[str], root_uri: str):
         self.cmd = cmd
@@ -68,34 +68,34 @@ class LSPClient:
         self._proc.stdin.flush()
 
     def _readline_with_timeout(self, timeout: float) -> Optional[bytes]:
-        """Читает одну строку с реальным таймаутом через select()."""
+        """Reads one line with a real timeout using select()."""
         ready, _, _ = select.select([self._proc.stdout], [], [], timeout)
         if not ready:
             return None
         return self._proc.stdout.readline()
 
     def _read_bytes_with_timeout(self, n: int, timeout: float) -> Optional[bytes]:
-        """Читает n байт с реальным таймаутом через select()."""
+        """Reads n bytes with a real timeout using select()."""
         ready, _, _ = select.select([self._proc.stdout], [], [], timeout)
         if not ready:
             return None
         return self._proc.stdout.read(n)
 
     def _recv(self, timeout: float = 10.0) -> Optional[dict]:
-        """Читает один JSON-RPC ответ с реальным таймаутом через select()."""
+        """Reads a single JSON-RPC response with a real timeout using select()."""
         deadline = time.time() + timeout
         headers = {}
-        # Читаем заголовки до пустой строки
+        # Read headers until an empty line
         while True:
             remaining = deadline - time.time()
             if remaining <= 0:
                 return None
             raw = self._readline_with_timeout(remaining)
             if raw is None:
-                return None  # таймаут
+                return None  # timeout
             line = raw.decode("utf-8", errors="ignore").strip()
             if not line:
-                break  # пустая строка = конец заголовков
+                break  # empty line = end of headers
             if ":" in line:
                 k, v = line.split(":", 1)
                 headers[k.strip()] = v.strip()
@@ -115,7 +115,7 @@ class LSPClient:
     def _send_request(self, method: str, params: dict) -> Optional[dict]:
         req_id = self._next_id()
         self._send({"jsonrpc": "2.0", "id": req_id, "method": method, "params": params})
-        # Пропускаем нотификации, ждём ответ с нашим id
+        # Skip notifications, wait for a response with our id
         for _ in range(20):
             resp = self._recv(timeout=8.0)
             if resp and resp.get("id") == req_id:
@@ -147,7 +147,7 @@ class LSPClient:
             logger.error("❌ [LSP] Initialization failed.")
 
     def open_document(self, filepath: str, language_id: str = "python"):
-        """Уведомляет LSP об открытии файла."""
+        """Notifies the LSP server that a file has been opened."""
         uri = Path(filepath).as_uri()
         try:
             content = Path(filepath).read_text(encoding="utf-8")
@@ -192,8 +192,8 @@ class LSPClient:
 
 class LSPTool:
     """
-    Task 32 — Высокоуровневый инструмент LSP для ToolRegistry.
-    Управляет пулом клиентов (Pyright для Python, TSServer для TS).
+    Task 32 — A high-level LSP tool for ToolRegistry.
+    Manages a pool of clients (Pyright for Python, TSServer for TS).
     """
     _clients: dict[str, LSPClient] = {}
 
@@ -202,21 +202,21 @@ class LSPTool:
         key = f"{workspace_root}:{language}"
         if key in cls._clients:
             client = cls._clients[key]
-            # Проверяем, жив ли процесс
+            # Check if the process is still alive
             if client._proc and client._proc.poll() is None:
                 return client
 
         root_uri = Path(workspace_root).resolve().as_uri()
 
         if language == "python":
-            # Pyright — стандарт для Python LSP
+            # Pyright is the standard for Python LSP
             cmds_to_try = [
                 ["pyright-langserver", "--stdio"],
                 ["python", "-m", "pyright", "--stdio"],
                 ["npx", "-y", "pyright", "--stdio"],
             ]
         else:
-            # TSServer — TypeScript
+            # TSServer for TypeScript
             cmds_to_try = [
                 ["typescript-language-server", "--stdio"],
                 ["npx", "-y", "typescript-language-server", "--stdio"],
@@ -235,8 +235,8 @@ class LSPTool:
     @staticmethod
     def find_symbol(symbol_name: str, workspace_root: str = ".", language: str = "python") -> str:
         """
-        [LSP] Ищет символ (класс, функцию, переменную) в воркспейсе через workspace/symbol.
-        Гораздо точнее grep — возвращает тип символа, файл и точную позицию.
+        [LSP] Searches for a symbol (class, function, variable) in the workspace via workspace/symbol.
+        Much more accurate than grep — returns the symbol type, file, and exact position.
         """
         workspace_root = str(Path(workspace_root).resolve())
         client = LSPTool._get_client(workspace_root, language)
@@ -272,8 +272,8 @@ class LSPTool:
     @staticmethod
     def find_references(filepath: str, line: int, character: int, workspace_root: str = ".") -> str:
         """
-        [LSP] Находит все ссылки (использования) символа по позиции курсора.
-        Args: filepath — абс. путь к файлу, line/character — 1-based позиция.
+        [LSP] Finds all references (usages) of a symbol at the cursor position.
+        Args: filepath - absolute path to the file, line/character - 1-based position.
         """
         workspace_root = str(Path(workspace_root).resolve())
         abs_path = str(Path(filepath).resolve())
@@ -284,7 +284,7 @@ class LSPTool:
             return f"Error: Cannot start LSP server for '{lang}'."
 
         client.open_document(abs_path, lang)
-        # LSP использует 0-based индексы
+        # LSP uses 0-based indices
         refs = client.find_references(abs_path, line - 1, character - 1)
         if refs is None:
             return f"Error: LSP references request failed."
@@ -304,7 +304,7 @@ class LSPTool:
     @staticmethod
     def goto_definition(filepath: str, line: int, character: int, workspace_root: str = ".") -> str:
         """
-        [LSP] Возвращает определение символа под курсором (textDocument/definition).
+        [LSP] Returns the definition of the symbol under the cursor (textDocument/definition).
         """
         workspace_root = str(Path(workspace_root).resolve())
         abs_path = str(Path(filepath).resolve())
@@ -321,7 +321,7 @@ class LSPTool:
         if not defs:
             return f"No definition found at {filepath}:{line}:{character}."
 
-        # Нормализуем — defs может быть list или dict
+        # Normalize - defs can be a list or a dict
         if isinstance(defs, dict):
             defs = [defs]
 
@@ -337,7 +337,7 @@ class LSPTool:
 
     @classmethod
     def shutdown_all(cls):
-        """Корректно завершает все запущенные LSP серверы."""
+        """Gracefully shuts down all running LSP servers."""
         for key, client in cls._clients.items():
             client.stop()
             logger.info(f"🛑 [LSP] Server stopped: {key}")

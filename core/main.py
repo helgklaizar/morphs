@@ -38,40 +38,40 @@ file_writer = FileWriterMorph()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. Стартуем шину событий! (Честная P2P/Redis связь)
+    # 1. Start the event bus! (Honest P2P/Redis connection)
     await bus.connect()
     
-    # 2. Запускаем фоновых демонов
+    # 2. Start background daemons
     asyncio.create_task(watchdog.monitor_loop())
     asyncio.create_task(analytics.run_data_audit_loop())
     asyncio.create_task(swarm_orchestrator.setup_listeners())
     asyncio.create_task(file_writer.setup_listeners())
     
-    # Ред-Тиминг свежесгенерированных роутеров через шину
+    # Red-Teaming newly generated routers via the bus
     async def run_pentest_on_new_route(payload):
         filepath = payload.get("router_path")
-        _log_history.append(f"🛡️ [EventBus] Security-Morph начал аудит файла {filepath}")
+        _log_history.append(f"🛡️ [EventBus] Security-Morph has started auditing the file {filepath}")
         is_safe = security.run_pentest(filepath)
         if not is_safe:
-            _log_history.append(f"💥 [EventBus] Секьюрити-Служба ЗАПРЕТИЛА релиз файла {filepath}! Отправляю на лечение...")
-            # В будущем здесь триггер Healer-Morph
+            _log_history.append(f"💥 [EventBus] Security Service has FORBIDDEN the release of the file {filepath}! Sending for healing...")
+            # In the future, a Healer-Morph trigger will be here
     
     await bus.subscribe("router.generated", run_pentest_on_new_route)
 
-    # Улавливаем аналитику и шлем в чат
+    # Catch analytics and send to chat
     async def handle_chat_notif(payload):
         _chat_notifications.append(payload.get("msg", ""))
         
     await bus.subscribe("chat.notification", handle_chat_notif)
     
     yield
-    # Очистка при выключении
+    # Cleanup on shutdown
     pass
 
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
 app.include_router(kuzu_router)
 
-# Хранилище логов для реалтайм стриминга
+# Log storage for real-time streaming
 _log_history = []
 
 def log_progress(msg: str):
@@ -105,10 +105,10 @@ async def chat_stream():
 
 # _chat_notifications handler is defined in lifespan
 
-# V2: Hot-mounting отключен в угоду изоляции Workspaces.
-# Роутеры больше не загружаются в память Core Mind.
+# V2: Hot-mounting is disabled in favor of Workspace isolation.
+# Routers are no longer loaded into Core Mind's memory.
 if os.path.exists("routers"):
-    logger.info("⚠️ [Core Mind] Директория routers/ найдена, но hot-mounting отключен. Legacy-роутеры игнорируются.")
+    logger.info("⚠️ [Core Mind] The routers/ directory was found, but hot-mounting is disabled. Legacy routers are ignored.")
 
 app.add_middleware(
     CORSMiddleware,
@@ -144,9 +144,9 @@ def handle_business_event(req: EventRequest, bg_tasks: BackgroundTasks):
     save_event(req.event_type, req.payload)
     
     daemon = SyncDaemon()
-    daemon.send_telegram_report(f"Новое событие ({req.event_type}): {req.payload}")
+    daemon.send_telegram_report(f"New event ({req.event_type}): {req.payload}")
     
-    # Task 3: Reactor-Morph (анализирует событие через RAG Бизнес-Правил)
+    # Task 3: Reactor-Morph (analyzes the event via RAG of Business Rules)
     def invoke_reactor():
         reactor = ReactorMorph()
         reactor.react(req.event_type, req.payload)
@@ -197,13 +197,13 @@ async def handle_chat(req: ChatRequest, background_tasks: BackgroundTasks):
 
 @app.post("/api/v1/deploy")
 def trigger_deploy():
-    """Эндпоинт для Деплой-Морфа"""
+    """Endpoint for the Deploy-Morph"""
     success = deployer.generate_docker("morphs_business_os")
     return {"status": "deployed" if success else "failed"}
 
 
 if __name__ == "__main__":
-    logger.info(f"🚀 [Granian] Запуск Сверхбыстрого Сервера (Rust Engine) на порту {settings.CORE_MIND_PORT}...")
+    logger.info(f"🚀 [Granian] Starting the Ultra-Fast Server (Rust Engine) on port {settings.CORE_MIND_PORT}...")
     from granian import Granian
-    # Запускаем FastAPI через Rust
+    # Running FastAPI via Rust
     Granian("main:app", address="0.0.0.0", port=settings.CORE_MIND_PORT, interface="asgi").serve()

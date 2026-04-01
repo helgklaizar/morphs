@@ -3,13 +3,13 @@ import sys
 
 def ask_user_question(question: str, options: List[str] = None) -> Tuple[str, Optional[str]]:
     """
-    Интерактивный запрос к пользователю.
-    Запрашивает подтверждение на подозрительные действия:
-    - Выводит вопрос.
-    - Ждет ввода в терминале.
-    - Возвращает Tuple: (выбранная опция, [опционально измененный текст команды]).
+    Interactive prompt for the user.
+    Asks for confirmation for suspicious actions:
+    - Displays a question.
+    - Waits for input in the terminal.
+    - Returns a Tuple: (selected option, [optionally modified command text]).
     """
-    # ANSI Цвета для красоты в терминале
+    # ANSI colors for a nice terminal output
     RESET = "\033[0m"
     CYAN = "\033[96m"
     YELLOW = "\033[93m"
@@ -21,40 +21,40 @@ def ask_user_question(question: str, options: List[str] = None) -> Tuple[str, Op
     print(f"\n{RED}{BOLD}🚨 [Human-in-the-loop Action Required]{RESET} {question}\n")
     
     if not options:
-        options = ["Разрешить", "Запретить", "Изменить команду"]
+        options = ["Allow", "Deny", "Change command"]
         
-    # Всегда добавляем опцию "Свой ответ" для снятия когнитивной нагрузки 
-    if "Свой ответ" not in options and "Своя команда" not in options and "Изменить команду" not in options:
-        options.append("Свой ответ")
+    # Always add a "Custom response" option to reduce cognitive load 
+    if "Custom response" not in options and "Custom command" not in options and "Change command" not in options:
+        options.append("Custom response")
         
-    # Буквы A/B/C/D...
+    # Letters A/B/C/D...
     labels = [chr(65 + i) for i in range(len(options))]
     
     for i, (label, opt) in enumerate(zip(labels, options)):
-        # Подсвечиваем опасные/безопасные действия цветом
-        color = GREEN if i == 0 else RED if "Запретить" in opt or "Отмена" in opt else YELLOW
+        # Highlight dangerous/safe actions with color
+        color = GREEN if i == 0 else RED if "Deny" in opt or "Cancel" in opt else YELLOW
         print(f"   {CYAN}[{label}]{RESET} {color}{opt}{RESET}")
     
     try:
         choice_str = f"{labels[0]}-{labels[-1]}"
-        choice = input(f"\n{YELLOW}Ваш выбор [{choice_str}]: {RESET}").strip().upper()
+        choice = input(f"\n{YELLOW}Your choice [{choice_str}]: {RESET}").strip().upper()
         
         if choice not in labels:
-            print(f"{RED}❌ Неверный ввод. Действие запрещено по умолчанию.{RESET}")
-            return ("Запретить", None)
+            print(f"{RED}❌ Invalid input. Action denied by default.{RESET}")
+            return ("Deny", None)
             
         idx = labels.index(choice)
         selected_opt = options[idx]
 
         modified_input = None
-        if "Изменить" in selected_opt or "Change" in selected_opt or "Свой ответ" in selected_opt:
-            modified_input = input(f"{CYAN}Введите ваш вариант / новую команду: {RESET}").strip()
-            print(f"{GREEN}✅ Принято кастомное значение: {modified_input}{RESET}")
+        if "Change" in selected_opt or "Change" in selected_opt or "Custom response" in selected_opt:
+            modified_input = input(f"{CYAN}Enter your version / new command: {RESET}").strip()
+            print(f"{GREEN}✅ Custom value accepted: {modified_input}{RESET}")
             return ("Custom", modified_input)
             
-        print(f"{GREEN}✅ Выбрано: {selected_opt}{RESET}")
+        print(f"{GREEN}✅ Selected: {selected_opt}{RESET}")
         return (selected_opt, None)
 
     except (ValueError, IndexError, KeyboardInterrupt, EOFError):
-        print(f"\n{RED}❌ Ввод прерван или неверный. Действие запрещено по умолчанию.{RESET}")
-        return ("Запретить", None)
+        print(f"\n{RED}❌ Input interrupted or invalid. Action denied by default.{RESET}")
+        return ("Deny", None)

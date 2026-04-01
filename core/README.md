@@ -1,24 +1,24 @@
-# Мозг системы (Core Mind)
+# Core Mind
 
-Микросервис на Python с FastAPI. Отвечает за оркестрацию и работу ИИ.
+A Python microservice with FastAPI. Responsible for orchestration and AI operations.
 
-## Стек
+## Stack
 - Python 3.x
 - FastAPI
 - Uvicorn
-- MLX & MLX-LM (Локальный Inference для Apple Silicon)
+- MLX & MLX-LM (Local Inference for Apple Silicon)
 
-## Конфигурация и запуск
-Убедитесь, что вы находитесь в директории `core`:
+## Configuration and Launch
+Make sure you are in the `core` directory:
 ```bash
 source venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
 
-## Компоненты
-- `main.py` — Точка входа в API (API Server).
-- `db.py` — Обвязка для SQLite (Tier Free vs PRO ограничения). Текущая БД генерируется в `morphs_system.db`.
-- `mlx_agent.py` — Коннектор работы с Llama-3 для Apple Silicon (MLX).
-- `healer_morph.py` — Морф-целитель. Автоматически парсит ошибки из тестов Vitest/Vite и чинит код.
-- `sync_daemon.py` — Демон для бэкапов БД и отправки телеметрических отчетов в Telegram.
+## Components
+- `main.py` — API entry point (API Server).
+- `db.py` — Wrapper for SQLite (Tier Free vs PRO limitations). The current DB is generated in `morphs_system.db`.
+- `mlx_agent.py` — Connector for working with Llama-3 for Apple Silicon (MLX).
+- `healer_morph.py` — Healer morph. Automatically parses errors from Vitest/Vite tests and fixes the code.
+- `sync_daemon.py` — Daemon for DB backups and sending telemetry reports to Telegram.
