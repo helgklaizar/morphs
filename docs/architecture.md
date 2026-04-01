@@ -1,65 +1,86 @@
-# Morphs (Морфы) — Архитектура Самоорганизующейся AI-Системы
+# Morphs Business OS: Core Architecture
 
-## Концепт
-**Morphs** — это концепция автономных, самомодифицирующихся агентов (Autonomous Coding Agents). Они работают аналогично биологическим клеткам: система постоянно эволюционирует, микро-агенты ("морфы") рождаются для выполнения очень узких, конкретных задач изменения кодовой базы и "умирают", оставляя после себя рабочий и протестированный код.
+The Morphs architecture represents a paradigm shift from linear LLM wrappers to a biologically-inspired, self-healing, multi-agent swarm. Built on an advanced Reinforcement Learning (RL) foundation, Morphs dynamically assembles, plans, mutates, and validates software components in real-time.
 
-## Архитектура системы
+## 1. System Topology
+
+The system is partitioned into five distinct layers, maintaining strict isolation between planning (Brain), execution (Swarm), and validation (Sandbox).
 
 ```mermaid
 graph TD
-    %% Основные слои
-    subgraph Brain [Управляющий слой - Core Mind]
-        OS[OS Manager / Наблюдатель]
-        Memory[(DNA / Память: GEMINI.md, Решения)]
+    %% Executive Layer
+    subgraph Brain [CoreMind / Executive Controller]
+        CM[Swarm Orchestrator]
+        PT[Plan Tracker FSM]
+        QA[Quantum Atropos RL Module]
     end
 
-    subgraph Assembly [Слой сборки - Morph Forge]
-        Architect[Архитектор / Planner]
-        Reviewer[Ревьюер / Validator]
+    %% Memory & Context Layer
+    subgraph Memory [Hyper-Memory / GraphRAG]
+        LD[(LanceDB: Vector Embeddings)]
+        KZ[(Kùzu: Context Graphs)]
+        FI[FuzzyIndex: In-Memory Nav]
+        QE[Unified Query Engine]
     end
 
-    subgraph Morphs [Исполнительный слой - The Morphs]
-        M_UI[UI-Morph: верстает интерфейс]
-        M_API[API-Morph: пишет роуты и контракты БД]
-        M_Fix[Healer-Morph: фиксит системные баги и тесты]
+    %% Execution Layer
+    subgraph Swarm [The Morphs: Autonomous Executors]
+        AM[API Morph]
+        RM[Reactor Morph]
+        BM[Browser Morph]
+        HM[Healer Morph]
     end
 
-    subgraph Env [Среда обитания - Sandbox]
-        Tests((Тесты среды / Vitest, Playwright))
-        Build((Сборка бандла / Vite, Next.js))
+    %% Security & Sandbox Layer
+    subgraph Security [Red-Team Validation Hub]
+        YOLO[YOLOClassifier pre-execution guard]
+        IG[InjectionGuard post-execution hook]
+        BH[[Bash Harness Sandbox]]
+        TH[Test/Validation Engine]
     end
 
-    %% Логика работы
-    OS -->|1. Запрос на мутацию (новая фича)| Architect
-    Architect -->|2. Читает контекст| Memory
-    Architect -->|3. Раздает узкие задачи| M_UI
-    Architect -->|4. Раздает узкие задачи| M_API
-    Architect -->|5. Раздает узкие задачи| M_Fix
-    
-    M_UI -->|Пишет/Коммитит код| Tests
-    M_API -->|Пишет/Коммитит код| Tests
-    M_Fix -->|Драйвит фиксы| Tests
-
-    Tests -->|Провал| Reviewer
-    Reviewer -->|Анализ логов & Перезапуск| M_Fix
-    Tests -->|Успех| Build
-    Build -->|Успешная сборка -> Мердж| OS
+    %% Data Flow
+    CM -->|Decomposes Intent| PT
+    PT -->|Routes Tasks| Swarm
+    Swarm <-.->|Reads/Writes Context| QE
+    QE --> LD
+    QE --> KZ
+    QE --> FI
+    Swarm -->|Submits AST/Commands| YOLO
+    YOLO -->|Allowed| BH
+    BH -->|Stdout/Stderr| IG
+    IG -->|Sanitized Result| Swarm
+    BH -->|Fails Tests| HM
+    QA -.->|Updates Trajectory Weights| Swarm
 ```
 
-## Разбор компонентов
+## 2. Core Operational Mechanics
 
-### 1. Core Mind (Мозг / Наблюдатель)
-- Выступает оркестратором. Следит за запросами юзера, ловит системные ошибки мониторингов.
-- Хранит **DNA (ДНК системы)** — например, файл `GEMINI.md`. В ДНК хранится стек, правила и ключевые решения. Ни одна мутация не может нарушить ДНК.
+### A. The Brain (SwarmOrchestrator & CoreMind)
+At the top of the hierarchy sits the `SwarmOrchestrator`, which receives natural language intents or parsed blueprints via the `DeployMorph`.
+- **Stateful Planning:** Flat TODO lists are abandoned in favor of the `PlanTracker`. The tracker enforces a finite state machine representing task lifecycles (Idle -> Scoping -> Executing -> Verifying -> Done).
+- **Quantum Atropos (MCTS):** Uses a Monte-Carlo Tree Search implementation. Instead of linearly guessing code, the engine explores branches of architectural possibilities, simulating rollouts before committing code to disk.
 
-### 2. Morph Forge (Кузница / Архитектор)
-- При получении задачи Архитектор не пишет код сам. Он занимается *декомпозицией*. Раскладывает огромную таску "сделать корзину" на атомарные мутации для каждого типа Морфа.
+### B. The Swarm (Morphs)
+Different agents interact asynchronously via the `Event Bus` and `Debate Bus`. 
+See `agents_manifest.md` for a complete breakdown of all executing specialized Morphs (e.g., `CodeSmellMorph`, `WatchdogMorph`, `ReactorMorph`).
 
-### 3. The Morphs (Сами Агенты-исполнители)
-- **UI-Morph:** Слепой к бэкенду. Знает только React/Tailwind/Framer Motion. Его цель — нарисовать красивый компонент.
-- **API-Morph:** Не видит кнопку, но знает про роутинг, базы данных (PostgreSQL/Supabase) и DDL.
-- **Healer-Morph:** Просыпается тогда, когда ломается сборка (Vite) или тесты. Он "пожирает" `stderr`, ищет проблему и кромсает код до зелёного статуса.
+### C. The Hyper-Memory Layer
+Rather than stuffing a 2M token context window, Morphs utilizes dynamic context retrieval:
+- **GraphRAG (Kùzu):** Maps relationships between files, APIs, components, and semantic intents.
+- **Vector Search (LanceDB):** Enables deep semantic similarity queries across documentation and source code using `sentence-transformers`.
+- **FuzzyIndex:** An ultra-fast, in-memory trie/graph for rapid regex and path traversals without incurring LLM cost.
 
-### 4. Sandbox (Среда валидации)
-- Мутации изолированы (в ветках или виртуальной файловой системе).
-- Используется подход *Test-Driven Mutation*: пока тесты не пройдут, код к Наблюдателю не возвращается. Откат мутации на 100% безопасен, если Морф "сошел с ума".
+### D. Continuous Reinforcement Learning (Atropos RL)
+With `AtroposTrainer` and `AtroposMemory`, every action performed by a Morph within the `BashHarness` is recorded as a trajectory.
+- **Positive Rewards:** Passed tests, syntax-verified ASTs, successful `pytest` runs.
+- **Negative Penalties:** Hallucinations, sandbox crashes, or prompt-injection attempts.
+The RL module refines weights continuously, allowing the AI to "learn" the structure of the active repository dynamically.
+
+## 3. Invocation Pattern
+1. **Trigger:** `main.py` -> `CoreMind.execute(intent)`
+2. **Decomposition:** `PlanTracker` chunks intent.
+3. **Execution:** Specific Morphs are spawned asynchronously.
+4. **Validation:** `VerificationMorph` tests the result inside `BashHarness`.
+5. **Recovery:** If tests fail, `BackendHealer` steps into a fast feedback loop, fixing the AST iteratively.
+6. **Commit:** Only verified, sanitized, and type-checked code is merged into the host environment.
