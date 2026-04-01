@@ -1,0 +1,19 @@
+# Ignore virtualenvs and caches
+core/venv/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore databases and vector stores (they are mounted as volumes)
+core/app.db
+core/.lancedb/
+core/.kuzu_graph/
+.chroma/
+
+# Ignore frontend dependencies if in root
+node_modules/
+dist/
+.DS_Store

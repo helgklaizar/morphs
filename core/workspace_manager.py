@@ -1,0 +1,140 @@
+import os
+from config import settings
+from core.logger import logger
+
+class WorkspaceManager:
+    """
+    V2 Architecture: Управляет изолированными проектами (SaaS Песочницами).
+    Отвязывает генерацию кода от исходников конфигуратора Morphs OS.
+    Каждый сгенерированный бизнес теперь 100% автономен.
+    """
+    def __init__(self, base_dir: str = "../workspaces"):
+        self.base_dir = os.path.abspath(base_dir)
+        os.makedirs(self.base_dir, exist_ok=True)
+        
+    def init_workspace(self, project_name: str) -> str:
+        project_dir = os.path.join(self.base_dir, project_name)
+        
+        if not os.path.exists(project_dir):
+            os.makedirs(os.path.join(project_dir, "backend", "routers"), exist_ok=True)
+            os.makedirs(os.path.join(project_dir, "backend", "models"), exist_ok=True) # ORM
+            os.makedirs(os.path.join(project_dir, "frontend", "src", "pages"), exist_ok=True)
+            os.makedirs(os.path.join(project_dir, "frontend", "src", "components"), exist_ok=True)
+            
+            # Базовый скелет Backend
+            backend_main = f"""import os, glob, importlib.util
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from core.logger import logger
+
+app = FastAPI(title="{project_name} SaaS API")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+@app.get("/")
+def health_check():
+    return {{"status": "ok", "project": "{project_name}"}}
+
+# Автоматический mount роутеров, сгенерированных API-Morph
+router_files = glob.glob(os.path.join(os.path.dirname(__file__), "routers", "*.py"))
+for file_path in router_files:
+    module_name = os.path.basename(file_path)[:-3]
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    if spec and spec.loader:
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        if hasattr(module, "router"):
+            app.include_router(module.router, prefix=f"/api/{{module_name}}")
+            logger.info(f"🔗 [SaaS Workspace] Роутер загружен: {{module_name}}")
+"""
+            with open(os.path.join(project_dir, "backend", "main.py"), "w", encoding="utf-8") as f:
+                f.write(backend_main)
+
+            # Базовый скелет Frontend (Vite/React package.json)
+            package_json = '''{
+  "name": "'''+project_name+'''",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0"
+  }
+}'''
+            with open(os.path.join(project_dir, "frontend", "package.json"), "w", encoding="utf-8") as f:
+                f.write(package_json)
+                
+            # Docker & Microservice Infrastructure
+            self._write_docker_infrastructure(project_dir, project_name)
+
+        return project_dir
+        
+    def _write_docker_infrastructure(self, project_dir: str, project_name: str):
+        logger.info(f"🐳 [Workspace] Генерирую изолированный docker-compose для {project_name}")
+        dc_yaml = f"""version: '3.8'
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "{settings.SAAS_BACKEND_PORT}:8000"
+  frontend:
+    build: ./frontend
+    ports:
+      - "{settings.SAAS_FRONTEND_PORT}:3000"
+"""
+        with open(os.path.join(project_dir, "docker-compose.yml"), "w", encoding="utf-8") as f:
+            f.write(dc_yaml)
+            
+        with open(os.path.join(project_dir, "backend", "Dockerfile"), "w", encoding="utf-8") as f:
+            f.write("FROM python:3.12-slim\nCOPY . /app\nWORKDIR /app\nRUN pip install fastapi uvicorn sqlalchemy pydantic\nCMD [\"uvicorn\", \"main:app\", \"--host\", \"0.0.0.0\"]")
+            
+        with open(os.path.join(project_dir, "frontend", "Dockerfile"), "w", encoding="utf-8") as f:
+            f.write("FROM node:20-alpine\nCOPY . /app\nWORKDIR /app\nRUN npm install\nCMD [\"npm\", \"run\", \"dev\"]")
+
+    def write_api_route(self, project_name: str, filename: str, content: str) -> str:
+        path = os.path.join(self.base_dir, project_name, "backend", "routers", filename)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+        return path
+        
+    def write_ui_component(self, project_name: str, filename: str, content: str) -> str:
+        path = os.path.join(self.base_dir, project_name, "frontend", "src", "components", filename)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+        return path
+
+    def extract_multi_file(self, project_name: str, xml_string: str) -> dict:
+        """ 
+        Разбирает XML от ИИ вида:
+        <file path="src/auth.tsx">...</file>
+        И пишет их в физическое древо. Возвращает dict созданных файлов.
+        """
+        import re
+        logger.info(f"🌲 [Workspace Multi-File] Распаковка файлового дерева для проекта: {project_name}")
+        
+        # Regex для поиска всех <file path="...">...</file> (поддерживает переносы строк)
+        pattern = r'<file\s+path=["\']([^"\']+)["\']>(.*?)</file>'
+        matches = re.finditer(pattern, xml_string, re.DOTALL)
+        
+        created_files = {}
+        for match in matches:
+            file_path, file_content = match.groups()
+            file_content = file_content.strip()
+            
+            # Определяем абсолютный путь сохранения внутри frontend/
+            full_path = os.path.join(self.base_dir, project_name, "frontend", file_path)
+            
+            # Создаем родительские директории (например src/pages/ или src/lib/)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(file_content)
+                
+            created_files[file_path] = full_path
+            logger.info(f"📄 Создан файл: {file_path}")
+            
+        return created_files

@@ -1,0 +1,4 @@
+rules:
+  - "Всегда используй SQLAlchemy для генерации БД. Никакого сырого SQL в API-Morph."
+  - "Делай осмысленные колонки: id, created_at, updated_at."
+  - "Генерируй 'engine = create_engine(...)' прямо в файле роутера и вызывай 'Base.metadata.create_all(engine)' сразу."

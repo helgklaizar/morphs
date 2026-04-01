@@ -1,0 +1,31 @@
+# Docker Compose V2 YAML
+
+services:
+  morphs-core:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: morphs-os
+    ports:
+      - "8000:8000"
+    environment:
+      - SAAS_BACKEND_PORT=8000
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - ./core/.lancedb:/app/core/.lancedb
+      - ./core/.kuzu_graph:/app/core/.kuzu_graph
+    restart: on-failure
+
+  audit-chaos-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: morphs-os
+    command: ["python", "/app/core/audit_morph.py", "--chaos", "--duration=10m", "--intensity=high"]
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./core/.lancedb:/app/core/.lancedb
+      - ./core/.kuzu_graph:/app/core/.kuzu_graph
+    restart: on-failure

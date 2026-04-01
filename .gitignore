@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+venv_old/
+env.bak/
+venv.bak/
+
+# Project specific
+core/knowledge_graph.kuzu/
+core/knowledge_graph.lancedb/
+core/project.sqlite
+.lancedb/
+.pytest_cache/
+*.db
+*.sqlite3
+*.kuzu
+pytest_output*.txt
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Additional excludes
+node_modules/
+test_logs*.txt
+pytest.log
+pytest_pid.txt
+test_kuzu
+count_ru.py
+.DS_Store

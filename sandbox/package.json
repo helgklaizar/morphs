@@ -1,0 +1,13 @@
+{
+  "name": "morphs-sandbox",
+  "version": "1.0.0",
+  "description": "Среда валидации для тест-ориентированных мутаций",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run --reporter json"
+  },
+  "devDependencies": {
+    "vitest": "^1.4.0",
+    "typescript": "^5.4.0"
+  }
+}

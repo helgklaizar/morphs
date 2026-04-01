@@ -1,0 +1,39 @@
+name: "Real Estate & Property Management"
+industry: "real_estate"
+description: "CRM для агентов недвижимости, управляющих компаний и посуточной аренды (Booking-like). Шахматка бронирований."
+
+modules:
+  - id: "property_objects"
+    name: "Каталог Объектов"
+    type: "frontend"
+    features: 
+      - "Список квартир/офисов (Фотографии, Площадь, Цена, Статус)"
+      - "Теги: 'Свежий ремонт', 'Без залога', 'Pet-friendly'"
+      - "Генерация красивой PDF-презентации объекта для отправки клиенту в WhatsApp"
+      
+  - id: "booking_grid"
+    name: "Шахматка брони (PMS)"
+    type: "frontend"
+    features: 
+      - "Сетка (Объект - Даты). Горизонтальный скролл (Timeline)"
+      - "Бронирование (Ожидает оплату -> Заселен -> Выселен -> Клининг)"
+      - "Учет залога и финального акта возврата"
+
+  - id: "realty_db"
+    name: "БД Недвижимости"
+    type: "backend_db"
+    models:
+      - "Property (Тип, Адрес, Цена, Квадратура)"
+      - "Client (Арендатор/Покупатель, Бюджет, Телефон)"
+      - "Contract (Связь Объект <-> Клиент, Даты С-ПО, Сумма сделки)"
+      - "Lead (Сделка в Канбане: Новый -> Показ -> Договор)"
+
+integrations:
+  - id: "telegram_bot"
+    name: "Авто-Клининг"
+    features:
+      - "После 'Выселения' бот автоматически шлет задачу бригаде уборщиков: 'Объект X свободен, нужен клининг'"
+
+ai_instructions:
+  architecture: "React + Tailwind + FastAPI + SQLite"
+  design_constraints: "Стиль 'AirBnB / Booking'. Много воздуха (white-space), крупные фотографии объектов с закруглениями. Фокус на карте (интеграция leaflet.js/mapbox) и визуальной таймлайне шахматки."

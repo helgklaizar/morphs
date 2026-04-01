@@ -1,0 +1,40 @@
+name: "Retail Store & Inventory System"
+industry: "retail"
+description: "Автоматизация розничного магазина (одежда, продукты, хозтовары). Фокус на штрих-кодах, кассе и инвентаризации."
+
+modules:
+  - id: "barcode_pos"
+    name: "Касса со сканером"
+    type: "frontend"
+    features: 
+      - "Скрытое поле ввода для интеграции аппаратного считывателя штрих-кодов (HID USB)"
+      - "Горячие клавиши (F2-Оплата, F3-Поиск, F4-Скидка)"
+      - "Поиск товаров по артикулу и названию вручную"
+      - "Печать фискального чека (интерфейс)"
+      
+  - id: "inventory_manager"
+    name: "Менеджер Остатков"
+    type: "frontend"
+    features: 
+      - "Интерфейс ревизии (сверка остатков факт/база)"
+      - "Генератор штрих-кодов (EAN-13, Code128) и ценников для PDF печати"
+      - "Критические остатки (Красная зона)"
+
+  - id: "retail_db"
+    name: "СУБД Розничной торговли"
+    type: "backend_db"
+    models:
+      - "Product (SKU, Штрихкод, Закупочная_цена, Розница, Stock_level)"
+      - "Category (Группа товаров)"
+      - "Sale (Продажа, Итоговая сумма)"
+      - "SaleItem (Позиции в продаже)"
+
+integrations:
+  - id: "telegram_bot"
+    name: "Smart Alerts"
+    features:
+      - "Уведомление: 'Товар X заканчивается на складе (осталось < 5 шт)'"
+
+ai_instructions:
+  architecture: "React + Tailwind + FastAPI + SQLite"
+  design_constraints: "Утилитарный Enterprise-стиль (как у крупных ERP систем типа 1C или МойСклад). Плотные таблицы (data-tables) с пагинацией и сортировкой. Поддержка Keyboard-First навигации."

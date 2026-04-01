@@ -1,0 +1,40 @@
+name: "Beauty Salon & Barber Booking CRM"
+industry: "services_booking"
+description: "Система онлайн-записи и управления загрузкой мастеров для салонов красоты, барбершопов и спа."
+
+modules:
+  - id: "calendar_scheduler"
+    name: "Журнал Записей (Admin Calendar)"
+    type: "frontend"
+    features: 
+      - "Интерактивный календарь (Weekly/Daily вид)"
+      - "Drag-and-drop карточек записей (перенос времени)"
+      - "Цветовая кодировка услуг и мастеров"
+      
+  - id: "client_booking_widget"
+    name: "Онлайн-запись для клиентов (Widget)"
+    type: "frontend_public"
+    features: 
+      - "Мобильно-адаптивный флоу записи (Шаги: Услуга -> Мастер -> Время)"
+      - "Проверка пересечений расписания (Double-booking prevention)"
+      - "SMS/Telegram капча (подтверждение номера)"
+
+  - id: "crm_core"
+    name: "База Клиентов (CRM)"
+    type: "backend_db"
+    models:
+      - "Client (Имя, Телефон, LTV, Ноу-шоу)"
+      - "Employee (Расписание, Навыки)"
+      - "Service (Длительность, Цена)"
+      - "Appointment (Визит, Статус)"
+
+integrations:
+  - id: "whatsapp_telegram_reminders"
+    name: "Напоминания о визите"
+    features:
+      - "Авто-сообщение клиенту за 24 часа и за 2 часа до визита"
+      - "Уведомление мастеру об отмене записи"
+
+ai_instructions:
+  architecture: "React (Vite) + FastAPI + SQLite"
+  design_constraints: "Стиль Luxury Minimalist. Светлая тема, пастельные тона, шрифты с засечками (serifs) для заголовков. Плавные анимации переходов (framer-motion)."

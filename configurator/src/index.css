@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #08080A;
+  --color-surface: rgba(20, 20, 25, 0.65);
+  --color-borderBase: rgba(255, 255, 255, 0.08);
+  --color-primary: #FF6B00;
+  --color-primaryGlow: rgba(255, 107, 0, 0.25);
+  --color-textMain: #F2F2F2;
+  --color-textMuted: #8F8F99;
+  --background-image-glass-gradient: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-textMain min-h-screen antialiased selection:bg-primary selection:text-white font-sans;
+    background-image: 
+      radial-gradient(circle at top right, rgba(255, 107, 0, 0.08) 0vw, transparent 40vw),
+      radial-gradient(circle at bottom left, rgba(120, 0, 255, 0.05) 0vw, transparent 40vw);
+    background-attachment: fixed;
+  }
+}
+
+.glass-panel {
+  @apply bg-surface backdrop-blur-xl border border-borderBase shadow-2xl rounded-2xl bg-glass-gradient;
+}

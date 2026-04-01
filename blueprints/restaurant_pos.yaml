@@ -1,0 +1,41 @@
+name: "Restaurant POS & Kitchen Manager (Local-First)"
+industry: "food_beverage"
+description: "Система управления для ресторана или кофейни. Включает оффлайн-кассу (POS), экран повара (KDS) и базовый склад."
+
+modules:
+  - id: "pos_terminal"
+    name: "Каменная Касса (POS)"
+    type: "frontend"
+    features: 
+      - "Схема столов (Dine-in) и Заказ с собой (Takeaway)"
+      - "Меню с категориями и фото блюд"
+      - "Модификаторы (размер, добавки, без сахара)"
+      - "Разделение чека и скидки"
+  
+  - id: "kitchen_display"
+    name: "Экран Кухни (KDS)"
+    type: "frontend"
+    features: 
+      - "Очередь тикетов со звуковыми уведомлениями"
+      - "Цветовая индикация задержки (зеленый -> желтый -> красный)"
+      - "Смена статуса 'Готовится' -> 'Готово'"
+
+  - id: "inventory"
+    name: "Склад и Технокарты"
+    type: "backend_db"
+    models:
+      - "Product (Блюдо)"
+      - "Ingredient (Сырье)"
+      - "Recipe (Технокарта - связь Блюда и Сырья)"
+      - "StockTransaction (Приход/Расход)"
+
+integrations:
+  - id: "telegram_bot"
+    name: "Bot для Владельца"
+    features:
+      - "Уведомление об отмене чека (Anti-Fraud)"
+      - "Ежедневный Z-отчет (Выручка за смену) в 23:00"
+
+ai_instructions:
+  architecture: "React + Tailwind + FastAPI + SQLite"
+  design_constraints: "Dark Mode. Огромные tap-зоны для iPad/Сенсорных экранов POS. Интерфейс должен быть максимально контрастным и быстрым (0 lags)."
