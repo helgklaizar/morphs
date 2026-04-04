@@ -92,6 +92,22 @@ graph TD;
 
 ---
 
+## 📂 File Structure
+
+```text
+morphs/
+├── blueprints/        # Template files for dynamic AI generation
+├── configurator/      # Desktop Configurator App (React + Tauri)
+├── core/              # Main Autonomous Engine & MCTS Logic
+├── docs/              # System documentation & architecture
+├── sandbox/           # Isolated YOLO environments for code execution
+├── scripts/           # Deployment & system utility scripts
+├── ui/                # Web Interface / Frontend App
+├── workspaces/        # Stateful ephemeral workspaces for Swarm agents
+└── test_db/           # Local databases used for testing
+```
+
+---
 ## 🧩 Component Manifest
 
 A complete breakdown of the Morphs AI engineers and system primitives running inside the Swarm network.
