@@ -1,14 +1,6 @@
 import { Worker } from './workers';
 
-const generateId = () => Math.random().toString(36).substring(2, 17);
-
-const recordOutboxEvent = async (db: any, action: string, payload: any) => {
-  const id = generateId();
-  await db.execute(
-    `INSERT INTO outbox_events (id, entity_type, action, payload_json, status) VALUES ($1, $2, $3, $4, $5)`,
-    [id, 'workers', action, JSON.stringify(payload), 'pending']
-  );
-};
+import { generateId, recordOutboxEvent } from '@rms/db-local';
 
 export class LocalWorkersRepository {
   static async fetchAll(): Promise<Worker[]> {
@@ -36,7 +28,7 @@ export class LocalWorkersRepository {
       `INSERT INTO workers (id, name, role, rate_per_hour, phone, status) VALUES ($1, $2, $3, $4, $5, $6)`,
       [id, worker.name || '', worker.role || '', worker.hourly_rate || 0, worker.phone || '', worker.status || 'active']
     );
-    await recordOutboxEvent(db, 'worker_add', { id, ...worker });
+    await recordOutboxEvent(db, 'workers', 'worker_add', { id, ...worker });
   }
 
   static async update(id: string, payload: Partial<Worker>): Promise<void> {
@@ -56,7 +48,7 @@ export class LocalWorkersRepository {
     if (fields.length > 0) {
       values.push(id);
       await db.execute(`UPDATE workers SET ${fields.join(', ')} WHERE id=$${i}`, values);
-      await recordOutboxEvent(db, 'worker_update', { id, ...payload });
+      await recordOutboxEvent(db, 'workers', 'worker_update', { id, ...payload });
     }
   }
 
@@ -64,6 +56,6 @@ export class LocalWorkersRepository {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
     await db.execute(`DELETE FROM workers WHERE id=$1`, [id]);
-    await recordOutboxEvent(db, 'worker_delete', { id });
+    await recordOutboxEvent(db, 'workers', 'worker_delete', { id });
   }
 }

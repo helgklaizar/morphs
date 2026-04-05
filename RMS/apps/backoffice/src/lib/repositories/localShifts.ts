@@ -1,14 +1,6 @@
 import { ShiftRecord } from './shifts';
 
-const generateId = () => Math.random().toString(36).substring(2, 17);
-
-const recordOutboxEvent = async (db: any, action: string, payload: any) => {
-  const id = generateId();
-  await db.execute(
-    `INSERT INTO outbox_events (id, entity_type, action, payload_json, status) VALUES ($1, $2, $3, $4, $5)`,
-    [id, 'shifts', action, JSON.stringify(payload), 'pending']
-  );
-};
+import { generateId, recordOutboxEvent } from '@rms/db-local';
 
 export class LocalShiftsRepository {
   static async fetchAll(): Promise<ShiftRecord[]> {
@@ -57,7 +49,7 @@ export class LocalShiftsRepository {
       [id, workerId, startTime]
     );
     
-    await recordOutboxEvent(db, 'shift_start', { id, worker_id: workerId, start_time: startTime });
+    await recordOutboxEvent(db, 'shifts', 'shift_start', { id, worker_id: workerId, start_time: startTime });
   }
 
   static async endShift(id: string, startTime: string, hourlyRate: number): Promise<void> {
@@ -97,7 +89,7 @@ export class LocalShiftsRepository {
       [endTimeIso, hours, pay, id]
     );
 
-    await recordOutboxEvent(db, 'shift_end', {
+    await recordOutboxEvent(db, 'shifts', 'shift_end', {
       id,
       end_time: endTimeIso,
       total_hours: hours,

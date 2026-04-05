@@ -1,14 +1,6 @@
 import { MenuCategory, MenuItem } from '@/store/useMenuStore';
 
-const generateId = () => Math.random().toString(36).substring(2, 17);
-
-const recordOutboxEvent = async (db: any, action: string, payload: any) => {
-  const id = generateId();
-  await db.execute(
-    `INSERT INTO outbox_events (id, entity_type, action, payload_json, status) VALUES ($1, $2, $3, $4, $5)`,
-    [id, 'menu', action, JSON.stringify(payload), 'pending']
-  );
-};
+import { generateId, recordOutboxEvent } from '@rms/db-local';
 
 export class LocalMenuRepository {
   static async fetchCategories(): Promise<MenuCategory[]> {
@@ -58,14 +50,14 @@ export class LocalMenuRepository {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
     await db.execute(`UPDATE menu_items SET stock=$1 WHERE id=$2`, [newStockAmount, id]);
-    await recordOutboxEvent(db, 'menu_item_update_stock', { id, stock: newStockAmount });
+    await recordOutboxEvent(db, 'menu', 'menu_item_update_stock', { id, stock: newStockAmount });
   }
 
   static async toggleActive(id: string, newValue: boolean): Promise<void> {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
     await db.execute(`UPDATE menu_items SET is_active=$1 WHERE id=$2`, [newValue ? 1 : 0, id]);
-    await recordOutboxEvent(db, 'menu_item_toggle_active', { id, is_active: newValue });
+    await recordOutboxEvent(db, 'menu', 'menu_item_toggle_active', { id, is_active: newValue });
   }
 
   static async saveItem(item: Partial<MenuItem>): Promise<void> {
@@ -113,14 +105,14 @@ export class LocalMenuRepository {
     // Notice we do avoid saving the File object to the outbox payloads because JSON.stringify would strip it. 
     // In robust forms we would convert via FileReader to b64, but keeping it simple for POS operations.
     let payloadStr = JSON.stringify({ ...item, id });
-    await recordOutboxEvent(db, 'menu_item_save', JSON.parse(payloadStr));
+    await recordOutboxEvent(db, 'menu', 'menu_item_save', JSON.parse(payloadStr));
   }
 
   static async delete(id: string): Promise<void> {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
     await db.execute(`DELETE FROM menu_items WHERE id=$1`, [id]);
-    await recordOutboxEvent(db, 'menu_item_delete', { id });
+    await recordOutboxEvent(db, 'menu', 'menu_item_delete', { id });
   }
 
   // Recipes creation offline is complex due to multiple dependent collections 

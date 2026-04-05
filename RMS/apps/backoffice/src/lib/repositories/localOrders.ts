@@ -1,14 +1,6 @@
 import { Order, OrderItem, OrderStatus } from '@rms/types';
 
-const generateId = () => Math.random().toString(36).substring(2, 17);
-
-const recordOutboxEvent = async (db: any, action: string, payload: any) => {
-  const id = generateId();
-  await db.execute(
-    `INSERT INTO outbox_events (id, entity_type, action, payload_json, status) VALUES ($1, $2, $3, $4, $5)`,
-    [id, 'orders', action, JSON.stringify(payload), 'pending']
-  );
-};
+import { generateId, recordOutboxEvent } from '@rms/db-local';
 
 export class LocalOrdersRepository {
   static async fetchAll(): Promise<Order[]> {
@@ -83,7 +75,7 @@ export class LocalOrdersRepository {
     await db.execute(`UPDATE orders SET status=$1 WHERE id=$2`, [status, id]);
     
     const order = await this.fetchById(id);
-    if(order) await recordOutboxEvent(db, 'sync_order', order);
+    if(order) await recordOutboxEvent(db, 'orders', 'sync_order', order);
   }
 
   static async updateFields(id: string, payload: Partial<Order>): Promise<void> {
@@ -107,7 +99,7 @@ export class LocalOrdersRepository {
     }
     
     const order = await this.fetchById(id);
-    if(order) await recordOutboxEvent(db, 'sync_order', order);
+    if(order) await recordOutboxEvent(db, 'orders', 'sync_order', order);
   }
 
   static async create(payload: Partial<Order>): Promise<Order> {
@@ -139,7 +131,7 @@ export class LocalOrdersRepository {
       isArchived: false,
     };
     
-    await recordOutboxEvent(db, 'sync_order', newOrder);
+    await recordOutboxEvent(db, 'orders', 'sync_order', newOrder);
     return newOrder;
   }
 
@@ -154,7 +146,7 @@ export class LocalOrdersRepository {
     );
     
     const order = await this.fetchById(orderId);
-    if(order) await recordOutboxEvent(db, 'sync_order', order);
+    if(order) await recordOutboxEvent(db, 'orders', 'sync_order', order);
   }
 
   static async delete(id: string): Promise<void> {
@@ -162,7 +154,7 @@ export class LocalOrdersRepository {
     const db = await getDb();
     await db.execute(`DELETE FROM order_items WHERE order_id=$1`, [id]);
     await db.execute(`DELETE FROM orders WHERE id=$1`, [id]);
-    await recordOutboxEvent(db, 'delete_order', { id });
+    await recordOutboxEvent(db, 'orders', 'delete_order', { id });
   }
 
   static async archive(id: string): Promise<void> {
@@ -171,7 +163,7 @@ export class LocalOrdersRepository {
     await db.execute(`UPDATE orders SET is_archived=1 WHERE id=$1`, [id]);
     
     const order = await this.fetchById(id);
-    if(order) await recordOutboxEvent(db, 'sync_order', order);
+    if(order) await recordOutboxEvent(db, 'orders', 'sync_order', order);
   }
   
   static async updateFull(order: Order): Promise<void> {
@@ -193,6 +185,6 @@ export class LocalOrdersRepository {
     }
     
     const updatedOrder = await this.fetchById(order.id);
-    if(updatedOrder) await recordOutboxEvent(db, 'sync_order', updatedOrder);
+    if(updatedOrder) await recordOutboxEvent(db, 'orders', 'sync_order', updatedOrder);
   }
 }

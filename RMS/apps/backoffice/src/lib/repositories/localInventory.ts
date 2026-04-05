@@ -1,14 +1,6 @@
 import { InventoryCategory, InventoryItem } from './inventory';
 
-const generateId = () => Math.random().toString(36).substring(2, 17);
-
-const recordOutboxEvent = async (db: any, action: string, payload: any) => {
-  const id = generateId();
-  await db.execute(
-    `INSERT INTO outbox_events (id, entity_type, action, payload_json, status) VALUES ($1, $2, $3, $4, $5)`,
-    [id, action.startsWith('category') ? 'inventory_categories' : 'inventory_items', action, JSON.stringify(payload), 'pending']
-  );
-};
+import { generateId, recordOutboxEvent } from '@rms/db-local';
 
 export class LocalInventoryRepository {
   static async fetchAll(): Promise<InventoryCategory[]> {
@@ -51,14 +43,14 @@ export class LocalInventoryRepository {
       `INSERT INTO inventory_categories (id, name, order_index, is_visible_in_assemblies, is_visible_in_recipe) VALUES ($1, $2, $3, 1, 1)`,
       [id, name, maxOrder + 1]
     );
-    await recordOutboxEvent(db, 'category_add', { id, name, orderIndex: maxOrder + 1, isVisibleInAssemblies: true, isVisibleInRecipe: true });
+    await recordOutboxEvent(db, 'inventory', 'category_add', { id, name, orderIndex: maxOrder + 1, isVisibleInAssemblies: true, isVisibleInRecipe: true });
   }
 
   static async deleteCategory(id: string): Promise<void> {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
     await db.execute(`DELETE FROM inventory_categories WHERE id = $1`, [id]);
-    await recordOutboxEvent(db, 'category_delete', { id });
+    await recordOutboxEvent(db, 'inventory', 'category_delete', { id });
   }
 
   static async saveItem(item: Partial<InventoryItem> & { categoryId: string, name: string }): Promise<void> {
@@ -101,7 +93,7 @@ export class LocalInventoryRepository {
     
     // NOTE: Price Jump Notification is deferred to server-side or synced when online by SyncEngine logic.
 
-    await recordOutboxEvent(db, 'item_save', {
+    await recordOutboxEvent(db, 'inventory', 'item_save', {
       id: itemId,
       name: item.name,
       price,
@@ -120,14 +112,14 @@ export class LocalInventoryRepository {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
     await db.execute(`DELETE FROM inventory_items WHERE id = $1`, [id]);
-    await recordOutboxEvent(db, 'item_delete', { id });
+    await recordOutboxEvent(db, 'inventory', 'item_delete', { id });
   }
 
   static async updateQuantity(id: string, newQuantity: number): Promise<void> {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
     await db.execute(`UPDATE inventory_items SET stock=$1 WHERE id=$2`, [newQuantity, id]);
-    await recordOutboxEvent(db, 'item_update_quantity', { id, quantity: newQuantity });
+    await recordOutboxEvent(db, 'inventory', 'item_update_quantity', { id, quantity: newQuantity });
   }
 
   static async updateCategoryVisibility(id: string, field: string, newValue: boolean): Promise<void> {
@@ -135,13 +127,13 @@ export class LocalInventoryRepository {
     const db = await getDb();
     const val = newValue ? 1 : 0;
     await db.execute(`UPDATE inventory_categories SET ${field}=$1 WHERE id=$2`, [val, id]);
-    await recordOutboxEvent(db, 'category_update_visibility', { id, field, newValue });
+    await recordOutboxEvent(db, 'inventory', 'category_update_visibility', { id, field, newValue });
   }
 
   static async updateCategoryOrder(id: string, orderIndex: number): Promise<void> {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
     await db.execute(`UPDATE inventory_categories SET order_index=$1 WHERE id=$2`, [orderIndex, id]);
-    await recordOutboxEvent(db, 'category_update_order', { id, orderIndex });
+    await recordOutboxEvent(db, 'inventory', 'category_update_order', { id, orderIndex });
   }
 }
