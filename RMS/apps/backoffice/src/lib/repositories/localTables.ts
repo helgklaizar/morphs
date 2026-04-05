@@ -69,15 +69,15 @@ export class LocalTablesRepository {
 
     if (fields.length > 0) {
       values.push(id);
-      await db.execute(`UPDATE tables SET ${fields.join(', ')} WHERE id=$${i}`, values);
       await recordOutboxEvent(db, 'tables', 'table_update', { id, ...payload });
+      await db.execute(`UPDATE tables SET ${fields.join(', ')} WHERE id=$${i}`, values);
     }
   }
 
   static async delete(id: string): Promise<void> {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
-    await db.execute(`DELETE FROM tables WHERE id=$1`, [id]);
     await recordOutboxEvent(db, 'tables', 'table_delete', { id });
+    await db.execute(`DELETE FROM tables WHERE id=$1`, [id]);
   }
 }

@@ -1,0 +1,32 @@
+node_modules
+.next
+out
+.turbo
+*.log
+.DS_Store
+build
+dist
+target
+gen
+.env
+rms_ai_os.db
+*.db
+*.bak
+coverage
+nohup.out
+.backups
+
+# Client-specific overrides (never commit to RMS core)
+client-config/.env
+client-config/branding.ts
+client-config/deploy.md
+
+# PocketBase runtime data (images, sessions, logs — не нужны в git)
+backend/pb_data/storage/
+backend/pb_data/data.db
+backend/pb_data/logs/
+backend/pocketbase
+
+# Артефакты сборки и деплоя
+*.tar.gz
+apps/landing.tar.gz

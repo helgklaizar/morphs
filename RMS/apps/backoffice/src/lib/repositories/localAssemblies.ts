@@ -37,9 +37,12 @@ export class LocalAssembliesRepository {
     const db = await getDb();
     
     const assemblyId = generateId();
+    const validItems = items.filter(i => i.inventoryItemId && i.quantity > 0);
+    const payload = { id: assemblyId, name, items: validItems };
+    await recordOutboxEvent(db, 'assemblies', 'assembly_save', payload);
+
     await db.execute(`INSERT INTO assemblies (id, name) VALUES ($1, $2)`, [assemblyId, name]);
 
-    const validItems = items.filter(i => i.inventoryItemId && i.quantity > 0);
     for (const item of validItems) {
       const itemId = generateId();
       await db.execute(
@@ -47,19 +50,18 @@ export class LocalAssembliesRepository {
         [itemId, assemblyId, item.inventoryItemId, item.quantity]
       );
     }
-
-    const payload = { id: assemblyId, name, items: validItems };
-    await recordOutboxEvent(db, 'assemblies', 'assembly_save', payload);
   }
 
   static async update(id: string, name: string, items: { inventoryItemId: string, quantity: number }[]): Promise<void> {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
-    
+    const validItems = items.filter(i => i.inventoryItemId && i.quantity > 0);
+    const payload = { id, name, items: validItems };
+    await recordOutboxEvent(db, 'assemblies', 'assembly_save', payload);
+
     await db.execute(`UPDATE assemblies SET name=$1 WHERE id=$2`, [name, id]);
     await db.execute(`DELETE FROM assembly_items WHERE assembly_id=$1`, [id]);
 
-    const validItems = items.filter(i => i.inventoryItemId && i.quantity > 0);
     for (const item of validItems) {
       const itemId = generateId();
       await db.execute(
@@ -67,18 +69,15 @@ export class LocalAssembliesRepository {
         [itemId, id, item.inventoryItemId, item.quantity]
       );
     }
-
-    const payload = { id, name, items: validItems };
-    await recordOutboxEvent(db, 'assemblies', 'assembly_save', payload);
   }
 
   static async delete(id: string): Promise<void> {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
     
+    await recordOutboxEvent(db, 'assemblies', 'assembly_delete', { id });
+
     await db.execute(`DELETE FROM assembly_items WHERE assembly_id=$1`, [id]);
     await db.execute(`DELETE FROM assemblies WHERE id=$1`, [id]);
-    
-    await recordOutboxEvent(db, 'assemblies', 'assembly_delete', { id });
   }
 }
