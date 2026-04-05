@@ -1,0 +1,22 @@
+{
+  "name": "@rms/core",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "vitest": "^1.6.0"
+  },
+  "dependencies": {
+    "@rms/types": "workspace:*",
+    "dinero.js": "2.0.0-alpha.14"
+  }
+}
