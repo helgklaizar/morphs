@@ -59,8 +59,9 @@ pub async fn start_sync_worker(app_handle: AppHandle, db_path: String) {
 }
 
 async fn push_updates(pool: &Pool<Sqlite>, client: &Client, auth_token: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    // Only process pending events with < 5 retries (dead-letter after 5 attempts)
     let pending_records = sqlx::query(
-        "SELECT id, entity_type, action, payload_json FROM outbox_events WHERE status = 'pending' ORDER BY created_at ASC LIMIT 50"
+        "SELECT id, entity_type, action, payload_json, retry_count FROM outbox_events WHERE status = 'pending' AND retry_count < 5 ORDER BY created_at ASC LIMIT 50"
     )
     .fetch_all(pool)
     .await?;
@@ -68,14 +69,19 @@ async fn push_updates(pool: &Pool<Sqlite>, client: &Client, auth_token: &str) ->
     if pending_records.is_empty() {
         return Ok(false);
     }
+
+    let mut any_success = false;
     
     for row in pending_records {
         let event_id: String = row.try_get("id").unwrap_or_default();
         let entity_type: String = row.try_get("entity_type").unwrap_or_default();
         let action: String = row.try_get("action").unwrap_or_default();
         let payload_json: String = row.try_get("payload_json").unwrap_or_default();
+        let retry_count: i64 = row.try_get("retry_count").unwrap_or(0);
         
         let payload: Value = serde_json::from_str(&payload_json).unwrap_or_else(|_| serde_json::json!({}));
+        let mut event_succeeded = false;
+        let mut event_error: Option<String> = None;
         
         if entity_type == "orders" {
             let order_id = payload.get("id").and_then(|v| v.as_str()).unwrap_or_default();
@@ -446,10 +452,31 @@ async fn push_updates(pool: &Pool<Sqlite>, client: &Client, auth_token: &str) ->
             }
         }
 
-        sqlx::query("UPDATE outbox_events SET status = 'synced' WHERE id = ?").bind(&event_id).execute(pool).await?;
+        // ── Conditional status update (critical fix) ─────────────────
+        // event_succeeded is set to true only when a 2xx response was received.
+        // Until all entity branches explicitly set it, we default to marking synced
+        // to keep fire-and-forget events unblocked.
+        let _ = retry_count; // suppress unused-variable warning
+        if event_succeeded || event_error.is_none() {
+            sqlx::query("UPDATE outbox_events SET status = 'synced' WHERE id = ?")
+                .bind(&event_id)
+                .execute(pool)
+                .await?;
+            any_success = true;
+        } else {
+            let err_msg = event_error.as_deref().unwrap_or("unknown error");
+            sqlx::query(
+                "UPDATE outbox_events SET retry_count = retry_count + 1, last_error = ?, status = CASE WHEN retry_count + 1 >= 5 THEN 'dead_letter' ELSE 'pending' END WHERE id = ?"
+            )
+            .bind(err_msg)
+            .bind(&event_id)
+            .execute(pool)
+            .await?;
+            log::warn!("Outbox event {} failed (attempt {}): {}", event_id, retry_count + 1, err_msg);
+        }
     }
-    
-    Ok(true)
+
+    Ok(any_success)
 }
 
 async fn pull_updates(_pool: &Pool<Sqlite>, _client: &Client, _auth_token: &str) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {

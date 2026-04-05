@@ -1,14 +1,5 @@
 import { SupplierRecord } from '@/lib/repositories/suppliers';
-
-const generateId = () => Math.random().toString(36).substring(2, 17);
-
-const recordOutboxEvent = async (db: any, action: string, payload: any) => {
-  const id = generateId();
-  await db.execute(
-    `INSERT INTO outbox_events (id, entity_type, action, payload_json, status) VALUES ($1, $2, $3, $4, $5)`,
-    [id, 'suppliers', action, JSON.stringify(payload), 'pending']
-  );
-};
+import { generateId, recordOutboxEvent } from '@rms/db-local';
 
 export class LocalSuppliersRepository {
   static async fetchAll(): Promise<SupplierRecord[]> {
@@ -28,7 +19,6 @@ export class LocalSuppliersRepository {
     }));
   }
 
-  /** Cache suppliers from server into local SQLite */
   static async cacheFromServer(suppliers: SupplierRecord[]): Promise<void> {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
@@ -50,7 +40,7 @@ export class LocalSuppliersRepository {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')`,
       [id, payload.name || '', payload.phone || '', payload.email || '', payload.address || '', payload.category || '', payload.notes || '', payload.hours || null, payload.preferred_language || null]
     );
-    await recordOutboxEvent(db, 'supplier_create', { ...payload, id });
+    await recordOutboxEvent(db, 'suppliers', 'supplier_create', { ...payload, id });
   }
 
   static async update(id: string, payload: Partial<SupplierRecord>): Promise<void> {
@@ -71,13 +61,13 @@ export class LocalSuppliersRepository {
       fields.push(`sync_status='pending'`);
       await db.execute(`UPDATE suppliers SET ${fields.join(',')} WHERE id=$${i}`, [...vals, id]);
     }
-    await recordOutboxEvent(db, 'supplier_update', { ...payload, id });
+    await recordOutboxEvent(db, 'suppliers', 'supplier_update', { ...payload, id });
   }
 
   static async delete(id: string): Promise<void> {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
     await db.execute(`DELETE FROM suppliers WHERE id=$1`, [id]);
-    await recordOutboxEvent(db, 'supplier_delete', { id });
+    await recordOutboxEvent(db, 'suppliers', 'supplier_delete', { id });
   }
 }

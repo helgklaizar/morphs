@@ -1,4 +1,5 @@
 import Database from "@tauri-apps/plugin-sql";
+export { generateId, recordOutboxEvent } from './outbox';
 
 let dbInstance: Database | null = null;
 let isInitialized = false;
@@ -448,9 +449,14 @@ async function initLocalDb(db: Database) {
       action TEXT NOT NULL,
       payload_json TEXT NOT NULL,
       status TEXT DEFAULT 'pending',
+      retry_count INTEGER DEFAULT 0,
+      last_error TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+
+  try { await db.execute("ALTER TABLE outbox_events ADD COLUMN retry_count INTEGER DEFAULT 0;"); } catch(e) {}
+  try { await db.execute("ALTER TABLE outbox_events ADD COLUMN last_error TEXT;"); } catch(e) {}
 
   try {
     await db.execute("ALTER TABLE ai_settings ADD COLUMN is_developer_mode INTEGER DEFAULT 0;");

@@ -1,14 +1,5 @@
 import { AssemblyRecord } from '@/lib/repositories/assemblies';
-
-const generateId = () => Math.random().toString(36).substring(2, 17);
-
-const recordOutboxEvent = async (db: any, action: string, payload: any) => {
-  const id = generateId();
-  await db.execute(
-    `INSERT INTO outbox_events (id, entity_type, action, payload_json, status) VALUES ($1, $2, $3, $4, $5)`,
-    [id, 'assemblies', action, JSON.stringify(payload), 'pending']
-  );
-};
+import { generateId, recordOutboxEvent } from '@rms/db-local';
 
 export class LocalAssembliesRepository {
   static async fetchAll(): Promise<AssemblyRecord[]> {
@@ -58,7 +49,7 @@ export class LocalAssembliesRepository {
     }
 
     const payload = { id: assemblyId, name, items: validItems };
-    await recordOutboxEvent(db, 'assembly_save', payload);
+    await recordOutboxEvent(db, 'assemblies', 'assembly_save', payload);
   }
 
   static async update(id: string, name: string, items: { inventoryItemId: string, quantity: number }[]): Promise<void> {
@@ -78,7 +69,7 @@ export class LocalAssembliesRepository {
     }
 
     const payload = { id, name, items: validItems };
-    await recordOutboxEvent(db, 'assembly_save', payload);
+    await recordOutboxEvent(db, 'assemblies', 'assembly_save', payload);
   }
 
   static async delete(id: string): Promise<void> {
@@ -88,6 +79,6 @@ export class LocalAssembliesRepository {
     await db.execute(`DELETE FROM assembly_items WHERE assembly_id=$1`, [id]);
     await db.execute(`DELETE FROM assemblies WHERE id=$1`, [id]);
     
-    await recordOutboxEvent(db, 'assembly_delete', { id });
+    await recordOutboxEvent(db, 'assemblies', 'assembly_delete', { id });
   }
 }

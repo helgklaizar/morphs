@@ -133,6 +133,13 @@ export const useProcurementStore = create<ProcurementState>((set, get) => ({
 
   receiveOrder: async (id) => {
     try {
+      if (isTauri) {
+        // receiveOrder must update inventory stock levels — this requires server coordination.
+        // Allowing offline would cause stock desync across terminals.
+        useToastStore.getState().error("Приёмка товаров требует подключения к серверу. Проверьте соединение и повторите.");
+        return;
+      }
+
       const order = await pb.collection('supplier_orders').getOne(id);
       if (order.status !== 'ordered') {
         useToastStore.getState().error("Можно принять только заказанные товары");
