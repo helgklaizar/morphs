@@ -59,41 +59,32 @@ export class LocalRecipesRepository {
     const recipeId = id || generateId();
     const validIngredients = ingredients.filter(i => i.inventoryItemId || i.nestedRecipeId);
 
-    // ── Atomic transaction: recipe + ingredients ──────────────────────────────
-    await db.execute('BEGIN');
-    try {
-      if (id) {
-        await db.execute(
-          `UPDATE recipes SET name=$1, portions=$2, is_prep=$3, prep_inventory_id=$4 WHERE id=$5`,
-          [name, portions, isPrep ? 1 : 0, prepInventoryId || null, id]
-        );
-        await db.execute(`DELETE FROM recipe_ingredients WHERE recipe_id=$1`, [id]);
-      } else {
-        await db.execute(
-          `INSERT INTO recipes (id, name, portions, is_prep, prep_inventory_id) VALUES ($1, $2, $3, $4, $5)`,
-          [recipeId, name, portions, isPrep ? 1 : 0, prepInventoryId || null]
-        );
-      }
-
-      for (const ing of validIngredients) {
-        const ingId = generateId();
-        await db.execute(
-          `INSERT INTO recipe_ingredients (id, recipe_id, inventory_item_id, nested_recipe_id, quantity) VALUES ($1, $2, $3, $4, $5)`,
-          [ingId, recipeId, ing.inventoryItemId || null, ing.nestedRecipeId || null, ing.quantity]
-        );
-      }
-
-      await db.execute('COMMIT');
-    } catch (err) {
-      await db.execute('ROLLBACK');
-      throw err;
-    }
-    // ─────────────────────────────────────────────────────────────────────────
-
+    // Write Outbox Event FIRST (or inline) to ensure resilience.
     await recordOutboxEvent(db, 'recipes', 'recipe_save', {
       id: recipeId, name, portions, isPrep, prepInventoryId,
       ingredients: validIngredients
     });
+
+    if (id) {
+      await db.execute(
+        `UPDATE recipes SET name=$1, portions=$2, is_prep=$3, prep_inventory_id=$4 WHERE id=$5`,
+        [name, portions, isPrep ? 1 : 0, prepInventoryId || null, id]
+      );
+      await db.execute(`DELETE FROM recipe_ingredients WHERE recipe_id=$1`, [id]);
+    } else {
+      await db.execute(
+        `INSERT INTO recipes (id, name, portions, is_prep, prep_inventory_id) VALUES ($1, $2, $3, $4, $5)`,
+        [recipeId, name, portions, isPrep ? 1 : 0, prepInventoryId || null]
+      );
+    }
+
+    for (const ing of validIngredients) {
+      const ingId = generateId();
+      await db.execute(
+        `INSERT INTO recipe_ingredients (id, recipe_id, inventory_item_id, nested_recipe_id, quantity) VALUES ($1, $2, $3, $4, $5)`,
+        [ingId, recipeId, ing.inventoryItemId || null, ing.nestedRecipeId || null, ing.quantity]
+      );
+    }
 
     return recipeId;
   }
@@ -102,16 +93,9 @@ export class LocalRecipesRepository {
     const { getDb } = await import('@rms/db-local');
     const db = await getDb();
 
-    await db.execute('BEGIN');
-    try {
-      await db.execute(`DELETE FROM recipe_ingredients WHERE recipe_id=$1`, [id]);
-      await db.execute(`DELETE FROM recipes WHERE id=$1`, [id]);
-      await db.execute('COMMIT');
-    } catch (err) {
-      await db.execute('ROLLBACK');
-      throw err;
-    }
-
     await recordOutboxEvent(db, 'recipes', 'recipe_delete', { id });
+    
+    await db.execute(`DELETE FROM recipe_ingredients WHERE recipe_id=$1`, [id]);
+    await db.execute(`DELETE FROM recipes WHERE id=$1`, [id]);
   }
 }

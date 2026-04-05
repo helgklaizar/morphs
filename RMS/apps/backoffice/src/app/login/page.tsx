@@ -28,6 +28,18 @@ export default function LoginPage() {
           
           pb.authStore.save(token, adminModel);
           
+          if (typeof window !== 'undefined' && 'window.__TAURI_INTERNALS__' in window || (window as any).__TAURI_INTERNALS__) {
+            try {
+              const { setConfig } = await import('@rms/db-local');
+              const { PB_URL } = await import('@/lib/pocketbase');
+              await setConfig('auth_token', token);
+              await setConfig('pb_url', PB_URL);
+              console.log("Saved auth config to Tauri local DB");
+            } catch (err) {
+              console.error("Failed to save config to local DB:", err);
+            }
+          }
+
           // Small delay to ensure state is persisted
           setTimeout(() => {
             router.replace("/dashboard");

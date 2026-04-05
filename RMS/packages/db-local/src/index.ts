@@ -1,6 +1,21 @@
 import Database from "@tauri-apps/plugin-sql";
 export { generateId, recordOutboxEvent } from './outbox';
 
+// Config helpers
+export async function setConfig(key: string, value: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    'INSERT OR REPLACE INTO config (key, value) VALUES ($1, $2)',
+    [key, value]
+  );
+}
+
+export async function getConfig(key: string): Promise<string | null> {
+  const db = await getDb();
+  const rows = await db.select<any[]>('SELECT value FROM config WHERE key = $1', [key]);
+  return rows.length > 0 ? rows[0].value : null;
+}
+
 let dbInstance: Database | null = null;
 let isInitialized = false;
 
@@ -59,6 +74,13 @@ async function initLocalDb(db: Database) {
       is_visible_in_assemblies INTEGER DEFAULT 1,
       is_visible_in_recipe INTEGER DEFAULT 1,
       sync_status TEXT DEFAULT 'synced'
+    );
+  `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS config (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
     );
   `);
 
