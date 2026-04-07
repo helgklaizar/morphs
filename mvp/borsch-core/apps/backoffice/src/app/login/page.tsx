@@ -30,7 +30,7 @@ export default function LoginPage() {
           
           // Small delay to ensure state is persisted
           setTimeout(() => {
-            router.replace("/dashboard");
+            router.replace("/orders");
           }, 100);
         } catch (e: any) {
           console.error("Auth injection error:", e);

@@ -12,7 +12,7 @@ import {
   Users,
   Coffee,
 } from "lucide-react";
-import { useOrdersStore } from '@rms/core';
+import { useOrdersQuery, useUpdateOrderStatusMutation } from '@rms/core';
 import { useMenuStore, MenuItem } from '@rms/core';
 import { useToastStore } from '@rms/core';
 import { OrderStatus, Order } from "@rms/types";
@@ -38,16 +38,7 @@ const COLUMNS: {
     nextStatus: "preparing",
     nextLabel: "В работу →",
   },
-  {
-    status: "pending",
-    label: "Ожидают",
-    icon: Clock,
-    color: "text-blue-400",
-    bgColor: "bg-blue-500/10",
-    borderColor: "border-blue-500/30",
-    nextStatus: "preparing",
-    nextLabel: "В работу →",
-  },
+
   {
     status: "preparing",
     label: "Готовится",
@@ -67,16 +58,6 @@ const COLUMNS: {
     borderColor: "border-green-500/30",
     nextStatus: "delivering",
     nextLabel: "Выдать →",
-  },
-  {
-    status: "delivering",
-    label: "Доставка",
-    icon: Bike,
-    color: "text-purple-400",
-    bgColor: "bg-purple-500/10",
-    borderColor: "border-purple-500/30",
-    nextStatus: "completed",
-    nextLabel: "Закрыть ✓",
   },
 ];
 
@@ -112,7 +93,7 @@ function OrderCard({
   menuItems: MenuItem[];
 }) {
   const { mins, isUrgent, isWarning } = useElapsedTime(order.createdAt);
-  const { updateOrderStatus } = useOrdersStore();
+  const updateStatusMutation = useUpdateOrderStatusMutation();
   const { success, error } = useToastStore();
   const [advancing, setAdvancing] = useState(false);
 
@@ -120,7 +101,7 @@ function OrderCard({
     if (!nextStatus) return;
     setAdvancing(true);
     try {
-      await updateOrderStatus(order.id, nextStatus);
+      await updateStatusMutation.mutateAsync({ id: order.id, status: nextStatus });
       success(`Заказ #${order.id.slice(-4)} → ${nextLabel}`);
     } catch (e: any) {
       error("Ошибка обновления статуса");
@@ -172,10 +153,10 @@ function OrderCard({
       {/* Items */}
       <div className="flex flex-col gap-1 border-t border-white/5 pt-3">
         {order.items?.filter(item => {
+          if (item.menuItemName.toLowerCase().includes("доставка")) return false;
+          if (activeTab === "all") return true;
           const mi = menuItems.find(m => m.id === item.menuItemId || m.name === item.menuItemName);
           const dep = mi?.kitchenDepartment?.trim();
-          if (!dep) return false; // Non-kitchen items don't appear on KDS
-          if (activeTab === "all") return true;
           return dep === activeTab;
         }).map((item, i) => (
           <div key={i} className="flex justify-between items-baseline text-sm gap-2">
@@ -207,20 +188,17 @@ function OrderCard({
 }
 
 export function KitchenTab() {
-  const { orders, fetchOrders, subscribeToOrders, unsubscribeFromOrders } = useOrdersStore();
+  const { data: orders = [] } = useOrdersQuery();
   const { items: menuItems, fetchMenuItems, subscribeToMenu, unsubscribeFromMenu } = useMenuStore();
   const [activeTab, setActiveTab] = useState<string>("all");
 
   useEffect(() => {
-    fetchOrders();
     fetchMenuItems();
-    subscribeToOrders();
     subscribeToMenu();
     return () => {
-      unsubscribeFromOrders();
       unsubscribeFromMenu();
     };
-  }, [fetchOrders, fetchMenuItems, subscribeToOrders, subscribeToMenu, unsubscribeFromOrders, unsubscribeFromMenu]);
+  }, [fetchMenuItems, subscribeToMenu, unsubscribeFromMenu]);
 
   const departments = useMemo(() => {
     const deps = new Set<string>();
@@ -236,16 +214,13 @@ export function KitchenTab() {
     const allActive = orders.filter((o) => o.status !== "completed" && o.status !== "cancelled");
     
     if (activeTab === "all") {
-      return allActive.filter(o => o.items?.some(item => {
-        const mi = menuItems.find(m => m.id === item.menuItemId || m.name === item.menuItemName);
-        return !!mi?.kitchenDepartment?.trim();
-      }));
+      return allActive.filter(o => o.items?.some(item => !item.menuItemName.toLowerCase().includes("доставка")));
     }
     
     return allActive.filter(o => {
       return o.items?.some(item => {
         const mi = menuItems.find(m => m.id === item.menuItemId || m.name === item.menuItemName);
-        return mi?.kitchenDepartment?.trim() === activeTab;
+        return mi?.kitchenDepartment?.trim() === activeTab && !item.menuItemName.toLowerCase().includes("доставка");
       });
     });
   }, [orders, activeTab, menuItems]);
@@ -266,26 +241,7 @@ export function KitchenTab() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex-none p-6 border-b border-white/10 flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <UtensilsCrossed className="w-6 h-6 text-orange-500" />
-            <h1 className="text-2xl font-bold tracking-tight">Kitchen Display</h1>
-            {totalActive > 0 && (
-              <span className="bg-orange-500 text-white text-xs font-black px-2.5 py-1 rounded-full">
-                {totalActive}
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-white/40">
-            Real-time статусы заказов · обновляется автоматически
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-green-400 bg-green-500/10 border border-green-500/20 px-3 py-1.5 rounded-full">
-          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          Live
-        </div>
-      </div>
+
 
       {/* Tabs */}
       {departments.length > 0 && (

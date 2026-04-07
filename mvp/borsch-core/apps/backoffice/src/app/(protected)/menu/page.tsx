@@ -9,62 +9,29 @@ import {
   Infinity,
   ToggleLeft,
   ToggleRight,
-  ListOrdered
+  ListOrdered,
+  BookOpen,
+  Package,
+  Utensils,
+  MessageSquare
 } from "lucide-react";
+import Link from "next/link";
 
-import { useMenuStore, MenuItem } from '@rms/core';
+import { MenuSharedHeader } from "@/components/MenuSharedHeader";
+import { useMenuQuery, useMenuSubscriptions, useUpdateMenuStockMutation, useToggleMenuActiveMutation, MenuItem } from '@rms/core';
 import { MenuItemModal } from "./components/MenuItemModal";
-import { MenuCategoriesModal } from "./components/MenuCategoriesModal";
+
 export default function MenuPage() {
   const [filterPolls, setFilterPolls] = useState(false);
-  const [showCategories, setShowCategories] = useState(false);
-  const { items, isLoading, fetchMenuItems, fetchCategories, subscribeToMenu, unsubscribeFromMenu } = useMenuStore();
+  const { data: items = [], isLoading } = useMenuQuery();
+  useMenuSubscriptions();
   const [editingItem, setEditingItem] = useState<{isOpen: boolean, item: MenuItem | null}>({isOpen: false, item: null});
-  useEffect(() => {
-    fetchMenuItems();
-    fetchCategories();
-    subscribeToMenu();
-    return () => unsubscribeFromMenu();
-  }, [fetchMenuItems, fetchCategories, subscribeToMenu, unsubscribeFromMenu]);
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-white/10 mb-6 gap-4 mt-4">
-        <div>
-          <h1 className="text-3xl lg:text-4xl font-black tracking-tighter uppercase bg-gradient-to-r from-white to-white/50 bg-clip-text text-transparent">Меню</h1>
-          <p className="text-sm text-muted-foreground mt-1">Ассортимент, цены и остатки</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex bg-[#141414] border border-white/10 rounded-lg overflow-hidden shrink-0">
-            <button 
-              onClick={() => setFilterPolls(false)}
-              className={`px-3 py-1.5 text-xs font-semibold transition-colors ${!filterPolls ? 'bg-orange-500 text-white' : 'text-white/50 hover:bg-white/5'}`}
-            >
-              Основное
-            </button>
-            <button 
-              onClick={() => setFilterPolls(true)}
-              className={`px-3 py-1.5 text-xs font-semibold transition-colors ${filterPolls ? 'bg-purple-500 text-white' : 'text-white/50 hover:bg-white/5'}`}
-            >
-              NPS Опросы
-            </button>
-          </div>
+      <MenuSharedHeader filterPolls={filterPolls} onFilterPollsChange={setFilterPolls} />
 
-          <button onClick={() => setShowCategories(true)} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-amber-500 hover:bg-white/10 text-sm font-semibold transition-colors">
-            <FolderTree className="w-4 h-4" />
-            Категории
-          </button>
-          
-          <button 
-            onClick={() => setEditingItem({isOpen: true, item: null})}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Добавить
-          </button>
-        </div>
-      </div>
+
 
       <div className="flex-1 overflow-auto pb-10">
         {isLoading && items.length === 0 ? (
@@ -92,15 +59,15 @@ export default function MenuPage() {
         item={editingItem.item} 
       />
 
-      <MenuCategoriesModal 
-        isOpen={showCategories}
-        onClose={() => setShowCategories(false)}
-      />
+
     </div>
   );
 }
 
 function MenuCard({ item, onEdit }: { item: MenuItem; onEdit: () => void }) {
+  const updateStockMut = useUpdateMenuStockMutation();
+  const toggleActiveMut = useToggleMenuActiveMutation();
+
   return (
     <div className="flex flex-col bg-[#141414] rounded-2xl border border-white/10 overflow-hidden group hover:border-white/20 transition-colors">
       {/* Image Header */}
@@ -113,57 +80,58 @@ function MenuCard({ item, onEdit }: { item: MenuItem; onEdit: () => void }) {
       </div>
 
       <div className="flex flex-col flex-1 p-4">
-        <div className="flex items-start justify-between mb-1 gap-2">
-          <h3 className="font-bold text-lg leading-tight line-clamp-1 flex-1">{item.name}</h3>
-          {item.isPoll && (
-            <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 text-[10px] font-bold border border-purple-500/20 whitespace-nowrap shrink-0">
-              ОПРОС
-            </span>
-          )}
-        </div>
-        
-        <div className="mb-3 p-2 rounded-xl border bg-white/5 border-white/5">
-            <div className="flex items-center justify-between mb-1">
-            <span className="font-extrabold text-orange-500 text-lg">{item.price} ₪</span>
-            </div>
+        <div className="flex items-start justify-between mb-2 gap-2">
+          <h3 className="font-bold text-[19px] leading-tight line-clamp-2 flex-1">{item.name}</h3>
+          <div className="flex flex-col items-end gap-1">
+            <span className="font-black text-orange-500 text-[22px] shrink-0">{item.price} ₪</span>
+            {Boolean(item.isPoll) && (
+              <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 text-[10px] font-bold border border-purple-500/20 whitespace-nowrap">
+                ОПРОС
+              </span>
+            )}
+          </div>
         </div>
 
-        <p className="text-xs text-white/50 line-clamp-2 mb-4 flex-1">
+        <p className="text-[15px] text-white/50 line-clamp-3 mb-6 flex-1 mt-1 leading-relaxed">
           {item.description || 'Нет описания'}
         </p>
 
         {/* Controls */}
-        <div className="flex items-center justify-between border-t border-white/5 pt-3">
-          <div className="flex items-center">
+        <div className="flex items-center justify-between border-t border-white/5 pt-4">
+          <div className="flex items-center bg-white/5 rounded-xl p-1">
             <button 
-              onClick={() => useMenuStore.getState().updateStock(item.id, Math.max(0, item.stock - 1))}
-              className="p-1 rounded bg-white/10 hover:bg-white/20 text-white transition-colors"
+              onClick={() => updateStockMut.mutate({ id: item.id, amount: Math.max(0, item.stock - 1) })}
+              className="p-2 rounded-lg hover:bg-white/10 text-white transition-colors"
             >
-              <Minus className="w-3.5 h-3.5" />
+              <Minus className="w-5 h-5" />
             </button>
-            <div className="w-16 text-center text-sm font-bold text-cyan-400">
-              {item.stock === 0 ? <span className="flex items-center justify-center gap-1"><Infinity className="w-3.5 h-3.5"/> Безлим</span> : `${item.stock} шт`}
+            <div className="w-20 px-2 text-center text-sm font-bold text-cyan-400">
+              {item.stock === 0 ? <span className="flex items-center justify-center gap-1 text-xs"><Infinity className="w-4 h-4"/> Безлим</span> : `${item.stock} шт`}
             </div>
             <button 
-              onClick={() => useMenuStore.getState().updateStock(item.id, item.stock + 1)}
-              className="p-1 rounded bg-white/10 hover:bg-white/20 text-white transition-colors"
+              onClick={() => updateStockMut.mutate({ id: item.id, amount: item.stock + 1 })}
+              className="p-2 rounded-lg hover:bg-white/10 text-white transition-colors"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-5 h-5" />
             </button>
           </div>
 
           <button 
-            onClick={() => useMenuStore.getState().toggleActive(item.id, item.isActive)}
-            className={`p-1 transition-colors ${item.isActive ? 'text-green-500 hover:text-green-400' : 'text-gray-600 hover:text-gray-500'}`}
+            onClick={() => toggleActiveMut.mutate({ id: item.id, isActive: !item.isActive })}
+            className={`flex items-center justify-center gap-2 px-4 h-[44px] rounded-xl transition-all font-bold tracking-wider uppercase text-[11px] min-w-[110px] ${
+              item.isActive 
+                ? 'text-white bg-emerald-600/80 hover:bg-emerald-500 shadow-lg' 
+                : 'text-white/50 bg-white/5 hover:bg-white/10 border border-white/5'
+            }`}
           >
-            {item.isActive ? <ToggleRight className="w-7 h-7" /> : <ToggleLeft className="w-7 h-7" />}
+            {item.isActive ? 'В Меню' : 'Скрыто'}
           </button>
         </div>
       </div>
 
       <button 
         onClick={onEdit}
-        className="w-full py-3 text-xs font-bold text-white/70 bg-white/5 hover:bg-white/10 hover:text-white transition-colors border-t border-white/5"
+        className="w-full py-3.5 text-sm font-bold text-white/70 bg-white/5 hover:bg-white/10 hover:text-white transition-colors border-t border-white/5 uppercase tracking-wider"
       >
         Редактировать / Рецепт
       </button>

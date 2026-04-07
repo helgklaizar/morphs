@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { X, Trash2, Image as ImageIcon, Plus } from "lucide-react";
-import { MenuItem, useMenuStore } from '@rms/core';
+import { MenuItem, useRecipesStore, useSaveMenuItemMutation, useDeleteMenuItemMutation, useCategoriesQuery, useMenuQuery } from '@rms/core';
 import { ConfirmModal } from "@/components/ConfirmModal";
 
 interface Props {
@@ -12,7 +12,15 @@ interface Props {
 }
 
 export function MenuItemModal({ isOpen, onClose, item }: Props) {
-  const { saveMenuItem, deleteMenuItem, categories: menuCategories, items } = useMenuStore();
+  const saveMenuItemMut = useSaveMenuItemMutation();
+  const deleteMenuItemMut = useDeleteMenuItemMutation();
+  const { data: menuCategories = [] } = useCategoriesQuery();
+  const { data: items = [] } = useMenuQuery();
+  const { recipes, fetchRecipes } = useRecipesStore();
+
+  useEffect(() => {
+    fetchRecipes();
+  }, [fetchRecipes]);
 
   const existingDepartments = Array.from(new Set(items.map(i => i.kitchenDepartment).filter(Boolean)));
 
@@ -21,6 +29,7 @@ export function MenuItemModal({ isOpen, onClose, item }: Props) {
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [kitchenDepartment, setKitchenDepartment] = useState("");
+  const [recipeId, setRecipeId] = useState("");
   const [isPoll, setIsPoll] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -33,6 +42,7 @@ export function MenuItemModal({ isOpen, onClose, item }: Props) {
       setDescription(item?.description || "");
       setCategoryId(item?.categoryId || "");
       setKitchenDepartment(item?.kitchenDepartment || "");
+      setRecipeId(item?.recipeId || "");
       setIsPoll(item?.isPoll || false);
       setImageUrl(item?.image || "");
       setImageFile(null);
@@ -44,13 +54,14 @@ export function MenuItemModal({ isOpen, onClose, item }: Props) {
   const handleSave = async () => {
     if (!name.trim()) return;
 
-    await saveMenuItem({
+    await saveMenuItemMut.mutateAsync({
         id: item?.id,
         name: name.trim(),
         price: parseFloat(price.replace(',', '.')) || 0,
         description: description.trim(),
         categoryId: categoryId || undefined,
         kitchenDepartment: kitchenDepartment || undefined,
+        recipeId: recipeId || undefined,
         isPoll,
         image: imageUrl.trim(),
         imageFile: imageFile || undefined,
@@ -143,19 +154,14 @@ export function MenuItemModal({ isOpen, onClose, item }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-white/50 mb-1 block">Отдел кухни</label>
-                  <input
-                    list="kitchen-departments-list"
-                    type="text" value={kitchenDepartment} onChange={e => setKitchenDepartment(e.target.value)}
-                    placeholder="Все"
-                    className="w-full bg-[#242424] rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500 border border-white/5"
-                  />
-                  <datalist id="kitchen-departments-list">
-                    <option value="Все" />
-                    {existingDepartments.filter(d => d !== "Все").map(dept => (
-                      <option key={dept as string} value={dept as string} />
-                    ))}
-                  </datalist>
+                  <label className="text-xs text-white/50 mb-1 block">Рецепт (Списание)</label>
+                  <select
+                    value={recipeId} onChange={e => setRecipeId(e.target.value)}
+                    className="w-full bg-[#242424] rounded-lg px-4 py-3 text-sm outline-none focus:ring-1 focus:ring-orange-500 border border-white/5"
+                  >
+                    <option value="">Без рецепта (продажа в 0)</option>
+                    {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
                 </div>
             </div>
           </div>
@@ -184,7 +190,7 @@ export function MenuItemModal({ isOpen, onClose, item }: Props) {
           title="Удалить блюдо?"
           message={`Точно удалить блюдо "${item?.name}"?`}
           onConfirm={async () => {
-             if (item?.id) await deleteMenuItem(item.id);
+             if (item?.id) await deleteMenuItemMut.mutateAsync(item.id);
              setConfirmDelete(false);
              onClose();
           }}

@@ -1,56 +1,78 @@
 "use client";
 
 import { Suspense, useEffect, useState, useMemo } from "react";
-import { 
-  PlusCircle, 
-  CalendarDays, 
-  TrendingUp,
-  UserCircle
-} from "lucide-react";
-import { useOrdersStore } from '@rms/core';
+import { PlusCircle, CalendarDays, TrendingUp, UserCircle, Receipt } from "lucide-react";
+import { useOrdersQuery } from '@rms/core';
+import { pb } from "@/lib/pb";
+
+const getStatusStyle = (s: string) => {
+  if (s === 'new') return { label: 'Новый', bg: 'bg-orange-500/10', text: 'text-orange-500' };
+  if (s === 'preparing') return { label: 'Готовится', bg: 'bg-amber-500/10', text: 'text-amber-500' };
+  if (s === 'ready') return { label: 'Готов', bg: 'bg-green-500/10', text: 'text-green-500' };
+  if (s === 'delivering') return { label: 'У курьера', bg: 'bg-blue-500/10', text: 'text-blue-500' };
+  if (s === 'completed') return { label: 'Завершен', bg: 'bg-emerald-500/10', text: 'text-emerald-500' };
+  return { label: s, bg: 'bg-white/10', text: 'text-white/50' };
+};
 
 function DashboardContent() {
-  const { orders, fetchOrders, subscribeToOrders, unsubscribeFromOrders, isLoading: oLoading } = useOrdersStore();
-
-  useEffect(() => {
-    fetchOrders();
-    subscribeToOrders();
-    return () => unsubscribeFromOrders();
-  }, [fetchOrders, subscribeToOrders, unsubscribeFromOrders]);
-
+  const { data: orders = [], isLoading: oLoading } = useOrdersQuery();
   const loading = oLoading;
   const allOrdersList = useMemo(() => [...orders], [orders]);
   
+  const [allTimeStats, setAllTimeStats] = useState({ allTimeRevenue: 0, allTimeBit: 0, allTimeCash: 0 });
   const [topItems, setTopItems] = useState<{name: string; qty: number}[]>([]);
   const [topItemsLoading, setTopItemsLoading] = useState(true);
 
   useEffect(() => {
-    pb.collection('order_items').getFullList({ fields: 'menu_item_name,quantity' }).then(items => {
-      const counts: Record<string, number> = {};
-      items.forEach(i => {
-        if (!i.menu_item_name) return;
-        counts[i.menu_item_name] = (counts[i.menu_item_name] || 0) + i.quantity;
-      });
-      const sorted = Object.entries(counts).map(([name, qty]) => ({name, qty})).sort((a,b) => b.qty - a.qty).slice(0, 50);
-      setTopItems(sorted);
-    }).catch(console.error).finally(() => setTopItemsLoading(false));
+    async function fetchDashboardData() {
+      try {
+        const allOrders = await pb.collection('orders').getFullList({ filter: 'status != "cancelled"' });
+        let revenue = 0;
+        let bit = 0;
+        let cash = 0;
+        const validIds = new Set();
+        
+        allOrders.forEach(o => {
+          validIds.add(o.id);
+          revenue += o.total_amount || 0;
+          if (o.payment_method === 'bit') bit += o.total_amount || 0;
+          else cash += o.total_amount || 0;
+        });
+        
+        setAllTimeStats({ allTimeRevenue: revenue, allTimeBit: bit, allTimeCash: cash });
+
+        const menus = await pb.collection('menu_items').getFullList();
+        const validNames = new Set(menus.map(m => m.name));
+
+        const items = await pb.collection('order_items').getFullList();
+        const counts: Record<string, number> = {};
+        items.forEach(i => {
+          const lcase = i.menu_item_name?.toLowerCase() || '';
+          if (!i.menu_item_name || !validIds.has(i.order_id)) return;
+          if (lcase.includes('доставка') || lcase.includes('хлеб') || lcase.includes('приборы')) return;
+          if (!validNames.has(i.menu_item_name)) return;
+          
+          counts[i.menu_item_name] = (counts[i.menu_item_name] || 0) + i.quantity;
+        });
+        const sorted = Object.entries(counts).map(([name, qty]) => ({name, qty})).sort((a,b) => b.qty - a.qty).slice(0, 7);
+        setTopItems(sorted);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setTopItemsLoading(false);
+      }
+    }
+    fetchDashboardData();
   }, []);
 
   const stats = useMemo(() => {
     const today = new Date();
     
-    let allTimeRevenue = 0;
-    let allTimeBit = 0;
-    let allTimeCash = 0;
     let todayOrdersCount = 0;
     let todayRevenue = 0;
 
     allOrdersList.forEach(o => {
       if (o.status === 'cancelled') return;
-
-      allTimeRevenue += o.totalAmount;
-      if (o.paymentMethod === 'bit') allTimeBit += o.totalAmount;
-      else allTimeCash += o.totalAmount;
 
       const dateStr = (o.reservationDate && o.reservationDate.length > 5) ? o.reservationDate : o.createdAt;
       const d = new Date(dateStr);
@@ -69,10 +91,7 @@ function DashboardContent() {
     return {
       newOrders: orders.filter(o => o.status === 'new').length,
       todayOrders: todayOrdersCount,
-      todayRevenue,
-      allTimeRevenue,
-      allTimeBit,
-      allTimeCash
+      todayRevenue
     };
   }, [allOrdersList, orders]);
 
@@ -80,10 +99,9 @@ function DashboardContent() {
 
   return (
     <div className="space-y-6 max-w-7xl">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl lg:text-4xl font-black tracking-tighter uppercase bg-gradient-to-r from-white to-white/50 bg-clip-text text-transparent">Дашборд</h1>
-          <p className="text-muted-foreground">Обзор ключевых показателей ресторана</p>
+      <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5 shrink-0 gap-4 flex-wrap">
+        <div className="flex items-center gap-6">
+          <h1 className="text-3xl lg:text-4xl font-black tracking-tighter uppercase bg-gradient-to-r from-white to-white/50 bg-clip-text text-transparent">Аналитика</h1>
         </div>
       </div>
 
@@ -92,116 +110,134 @@ function DashboardContent() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF6B00]"></div>
         </div>
       ) : (
-        <div className="animate-in fade-in duration-300">
+        <div>
             <div className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-3">
-                <StatCard 
-                  title="Новых заказов" 
-                  value={orders.filter(o => o.status === 'new').length.toString()} 
-                  subtitle="требуют внимания"
-                  icon={<PlusCircle className="h-5 w-5 text-white" />}
-                  gradient="bg-gradient-to-br from-orange-500 to-orange-400"
-                  borderColor="border-orange-500/20"
-                  valueColor="text-orange-500"
-                />
-                <StatCard 
-                  title="Сегодня" 
-                  value={stats.todayOrders.toString()} 
-                  subtitle="заказов"
-                  icon={<CalendarDays className="h-5 w-5 text-white" />}
-                  gradient="bg-gradient-to-br from-amber-500 to-amber-400"
-                  borderColor="border-amber-500/20"
-                  valueColor="text-amber-500"
-                />
-                <div className="rounded-[24px] border border-[#222] bg-gradient-to-b from-[#1c1c1e] to-[#0a0a0a] p-6 shadow-2xl col-span-1 md:col-span-1 flex flex-col justify-between relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-[40px] -mr-10 -mt-10 pointer-events-none" />
-                  <div>
-                    <div className="flex items-center gap-3 mb-6 relative z-10">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/20">
-                        <TrendingUp className="h-6 w-6 text-white" />
-                       </div>
-                      <h3 className="font-black text-xl text-white tracking-widest uppercase">Выручка</h3>
+              {/* Row 1: Новые/Сегодня + Последние заказы */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Block 1: Активность */}
+                <div className="rounded-2xl border border-white/5 bg-[#141414] shadow-sm flex flex-col">
+                  <div className="p-6 pb-4 border-b border-white/5 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5">
+                      <CalendarDays className="h-5 w-5 text-amber-500" />
                     </div>
-                    
-                    <div className="space-y-4 relative z-10">
-                      <div className="flex justify-between items-end border-b border-white/5 pb-3">
-                        <span className="text-sm font-bold text-white/40 uppercase tracking-widest">Сегодня</span>
-                        <span className="text-4xl font-black text-emerald-400 tracking-tighter">{stats.todayRevenue.toFixed(0)} ₪</span>
-                      </div>
-                      <div className="flex justify-between items-end border-b border-white/5 pb-3">
-                        <span className="text-sm font-bold text-white/40 uppercase tracking-widest">Все время</span>
-                        <span className="text-3xl font-black text-white tracking-tighter">{stats.allTimeRevenue.toFixed(0)} ₪</span>
-                      </div>
-                    </div>
+                    <h2 className="text-xl font-bold text-white tracking-tight">Активность</h2>
                   </div>
-
-                  <div className="mt-6 pt-2 flex gap-3 relative z-10">
-                     <div className="flex-1 bg-white/5 rounded-2xl p-4 border border-white/5 hover:bg-white/10 transition-colors">
-                        <span className="text-[11px] text-white/40 block mb-1 font-black tracking-widest">НАЛИЧНЫМИ</span>
-                        <span className="text-2xl font-black text-white">{stats.allTimeCash.toFixed(0)} ₪</span>
-                     </div>
-                     <div className="flex-1 bg-purple-500/10 rounded-2xl p-4 border border-purple-500/20 hover:bg-purple-500/20 transition-colors">
-                        <span className="text-[11px] text-purple-400/60 block mb-1 font-black tracking-widest">BIT / КАРТА</span>
-                        <span className="text-2xl font-black text-purple-400">{stats.allTimeBit.toFixed(0)} ₪</span>
-                     </div>
+                  <div className="p-6 grid grid-cols-2 gap-4 flex-1">
+                    <div className="bg-white/5 rounded-xl p-5 flex flex-col justify-center border border-white/5 hover:bg-white/10 transition-colors">
+                      <h3 className="text-4xl font-black tracking-tighter text-orange-500 mb-2">{orders.filter(o => o.status === 'new').length}</h3>
+                      <p className="text-sm font-bold text-white">Новых заказов</p>
+                      <p className="text-xs text-white/40 mt-1 uppercase tracking-wider font-semibold">ждут внимания</p>
+                    </div>
+                    <div className="bg-white/5 rounded-xl p-5 flex flex-col justify-center border border-white/5 hover:bg-white/10 transition-colors">
+                      <h3 className="text-4xl font-black tracking-tighter text-amber-500 mb-2">{stats.todayOrders}</h3>
+                      <p className="text-sm font-bold text-white">Заказов сегодня</p>
+                      <p className="text-xs text-white/40 mt-1 uppercase tracking-wider font-semibold">за текущий день</p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-5 w-1 rounded-full bg-orange-500"></div>
-                    <h2 className="text-xl font-bold">Последние заказы</h2>
+                {/* Block 2: Заказы */}
+                <div className="rounded-2xl border border-white/5 bg-[#141414] shadow-sm flex flex-col">
+                  <div className="p-6 pb-4 border-b border-white/5 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5">
+                      <Receipt className="h-5 w-5 text-orange-500" />
+                    </div>
+                    <h2 className="text-xl font-bold text-white tracking-tight">Заказы</h2>
                   </div>
                   
-                  <div className="rounded-2xl border border-white/5 bg-[#141414] overflow-hidden flex-1">
+                  <div className="flex-1 flex flex-col pb-2">
                     {recentOrders.length === 0 ? (
-                      <div className="p-8 text-center text-muted-foreground">Нет заказов</div>
+                      <div className="p-8 text-center text-white/40 m-auto font-medium">Нет недавних заказов</div>
                     ) : (
-                      recentOrders.map((o, i) => (
-                        <div key={o.id} className="group">
-                          {i > 0 && <div className="h-px w-full bg-white/5"></div>}
-                          <div className="flex items-center gap-4 p-4 hover:bg-white/5 transition-colors">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/5 group-hover:bg-orange-500/10 transition-colors">
-                              <Receipt className="h-5 w-5 text-white/50 group-hover:text-orange-500 transition-colors" />
+                      recentOrders.map((o, i) => {
+                        const st = getStatusStyle(o.status);
+                        return (
+                        <div key={o.id} className="group px-6 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                          <div className={`flex items-center gap-4 py-4 border-l-2 border-transparent group-hover:${st.text.replace('text-', 'border-')}`}>
+                            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${st.bg}`}>
+                              <Receipt className={`h-5 w-5 transition-colors ${st.text}`} />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="truncate text-sm font-bold text-white">{o.customerName || 'Без названия'}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">{new Date(o.createdAt).toLocaleString('ru-RU')}</p>
+                              <p className="text-xs text-white/40 mt-1 font-medium">{new Date(o.createdAt).toLocaleString('ru-RU')}</p>
                             </div>
-                            <div className="text-right shrink-0">
-                              <p className="text-sm font-bold">{o.totalAmount} ₪</p>
-                              {o.status === 'new' && <span className="text-[10px] font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full mt-1 inline-block">НОВЫЙ</span>}
+                            <div className="text-right flex flex-col items-end shrink-0">
+                              <p className="text-sm font-black text-white">{o.totalAmount} ₪</p>
+                              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full mt-1.5 inline-block ${st.bg} ${st.text}`}>
+                                {st.label.toUpperCase()}
+                              </span>
                             </div>
                           </div>
                         </div>
-                      ))
+                      )})
                     )}
                   </div>
                 </div>
 
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-5 w-1 rounded-full bg-blue-500"></div>
-                    <h2 className="text-xl font-bold">Топ продаж (Все время)</h2>
+              </div>
+
+              {/* Row 2: Выручка + Топ продаж */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-2">
+                
+                {/* Block 3: Выручка */}
+                <div className="rounded-2xl border border-white/5 bg-[#141414] shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="p-6 pb-4 border-b border-white/5 flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5">
+                        <TrendingUp className="h-5 w-5 text-emerald-500" />
+                      </div>
+                      <h2 className="text-xl font-bold text-white tracking-tight">Выручка</h2>
+                    </div>
+                    
+                    <div className="p-6 space-y-5">
+                      <div className="flex justify-between items-end border-b border-white/5 pb-4">
+                        <span className="text-sm font-bold text-white/50 uppercase tracking-wider">Сегодня</span>
+                        <span className="text-4xl font-black text-emerald-400 tracking-tighter">{stats.todayRevenue.toFixed(0)} ₪</span>
+                      </div>
+                      <div className="flex justify-between items-end border-b border-white/5 pb-4">
+                        <span className="text-sm font-bold text-white/50 uppercase tracking-wider">Все время</span>
+                        <span className="text-3xl font-black text-white tracking-tighter">{allTimeStats.allTimeRevenue.toFixed(0)} ₪</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="px-6 pb-6 flex gap-4">
+                     <div className="flex-1 bg-white/5 border border-white/5 rounded-xl p-4 hover:bg-white/10 transition-colors">
+                        <span className="text-[11px] text-white/40 block mb-1.5 font-bold tracking-widest uppercase">Наличными</span>
+                        <span className="text-2xl font-black text-white">{allTimeStats.allTimeCash.toFixed(0)} ₪</span>
+                     </div>
+                     <div className="flex-1 bg-white/5 border border-white/5 rounded-xl p-4 hover:bg-white/10 transition-colors">
+                        <span className="text-[11px] text-purple-400/80 block mb-1.5 font-bold tracking-widest uppercase">Bit / Карта</span>
+                        <span className="text-2xl font-black text-purple-400">{allTimeStats.allTimeBit.toFixed(0)} ₪</span>
+                     </div>
+                  </div>
+                </div>
+
+                {/* Block 4: Продажи */}
+                <div className="rounded-2xl border border-white/5 bg-[#141414] shadow-sm flex flex-col">
+                  <div className="p-6 pb-4 border-b border-white/5 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5">
+                      <TrendingUp className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <h2 className="text-xl font-bold text-white tracking-tight">Продажи (Топ)</h2>
                   </div>
                   
-                  <div className="rounded-2xl border border-white/5 bg-[#141414] overflow-hidden flex-1 max-h-[400px] overflow-y-auto custom-scrollbar">
+                  <div className="flex-1 flex flex-col pb-2">
                     {topItemsLoading ? (
-                      <div className="p-8 text-center text-muted-foreground">Загрузка...</div>
+                      <div className="p-8 text-center text-white/40 font-medium my-auto">Загрузка...</div>
                     ) : topItems.length === 0 ? (
-                      <div className="p-8 text-center text-muted-foreground">Нет данных</div>
+                      <div className="p-8 text-center text-white/40 font-medium my-auto">Нет данных</div>
                     ) : (
                       topItems.map((item, i) => (
-                        <div key={item.name} className="group flex items-center justify-between p-4 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                          <div className="flex items-center gap-3">
-                             <div className="w-6 h-6 rounded bg-white/5 text-white/50 flex items-center justify-center text-xs font-bold">{i + 1}</div>
+                        <div key={item.name} className="group flex items-center justify-between px-6 py-4 border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                          <div className="flex items-center gap-4">
+                             <div className="w-8 h-8 rounded-lg bg-white/5 text-white/50 flex items-center justify-center text-xs font-bold border border-white/5">{i + 1}</div>
                              <span className="text-sm font-bold text-white truncate max-w-[200px] block">{item.name}</span>
                           </div>
-                          <div className="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full">
+                          <div className="flex items-center gap-2 bg-white/5 border border-white/5 px-3 py-1.5 rounded-full group-hover:bg-white/10 transition-colors">
                              <span className="text-white font-black text-sm">{item.qty}</span>
-                             <span className="text-white/40 text-[10px] uppercase font-bold">шт</span>
+                             <span className="text-white/40 text-[10px] uppercase font-bold tracking-wider">Шт</span>
                           </div>
                         </div>
                       ))
@@ -224,17 +260,4 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({ title, value, subtitle, icon, gradient, borderColor, valueColor }: any) {
-  return (
-    <div className={`rounded-2xl border ${borderColor} bg-[#141414] p-5 shadow-sm`}>
-      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${gradient}`}>
-        {icon}
-      </div>
-      <div className="mt-4">
-        <h3 className={`text-3xl font-bold tracking-tight ${valueColor}`}>{value}</h3>
-        <p className="mt-1 text-sm font-semibold">{title}</p>
-        <p className="text-xs text-muted-foreground">{subtitle}</p>
-      </div>
-    </div>
-  );
-}
+

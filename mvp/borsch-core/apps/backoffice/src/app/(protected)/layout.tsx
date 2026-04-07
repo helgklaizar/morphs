@@ -12,11 +12,14 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useThemeStore, RealtimeProvider } from '@rms/core';
 import { ToastContainer } from "@/components/ui/ToastContainer";
-
+import { TopHeader } from "@/components/TopHeader";
+import { AiAssistantOverlay } from "@/components/AiAssistantOverlay";
+import { BotMessageSquare } from "lucide-react";
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
+  const [isAiOpen, setIsAiOpen] = useState(false);
   const { colors } = useThemeStore();
 
   useEffect(() => {
@@ -48,41 +51,25 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex-1 bg-[#0a0a0a] flex flex-col relative w-full overflow-hidden h-screen text-white">
+      <TopHeader />
+      
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto px-4 lg:px-8 pt-6 pb-32 w-full custom-scrollbar relative">
-        <div className="max-w-[1800px] mx-auto min-h-full flex flex-col relative">
+      <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-6 w-full custom-scrollbar relative">
+        <div className="w-full min-h-full flex flex-col relative">
           {children}
         </div>
       </main>
 
-      {/* Floating Glass Dock Navigation */}
-      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 bg-white/5 backdrop-blur-3xl px-3 py-3 rounded-[2rem] border border-white/10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.8)]">
-        <button onClick={() => router.push('/dashboard')} 
-          className={getBtnClass(pathname === '/dashboard')}
-          style={{ backgroundColor: colors.dashboard }}
-        >
-          <LayoutDashboard className="w-5 h-5 shrink-0" /> 
-          <span className="hidden md:inline">Дашборд</span>
-        </button>
+      {/* Floating AI Button (Bottom Center - Drop) */}
+      <button
+        onClick={() => setIsAiOpen(true)}
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 px-16 md:px-24 pt-3 pb-2 bg-gradient-to-t from-orange-600 to-orange-400 hover:from-orange-500 hover:to-orange-300 text-white rounded-t-full flex items-center justify-center shadow-[0_-5px_25px_rgba(249,115,22,0.4)] hover:shadow-[0_-5px_35px_rgba(249,115,22,0.6)] hover:pb-3 transition-all z-40 border-t border-x border-white/10 group"
+        title="Открыть ИИ помощника"
+      >
+        <BotMessageSquare className="w-6 h-6 group-hover:scale-110 transition-transform" />
+      </button>
 
-        <button onClick={() => router.push('/pos')} 
-          className={getBtnClass(pathname === '/pos')}
-          style={{ backgroundColor: colors.pos }}
-        >
-          <CreditCard className="w-5 h-5 shrink-0" /> 
-          <span className="hidden md:inline">Касса</span>
-        </button>
-        
-        <OrderNavBadge />
-
-        <button onClick={() => router.push('/menu')} 
-          className={getBtnClass(pathname === '/menu')}
-          style={{ backgroundColor: colors.menu }}
-        >
-          <ChefHat className="w-5 h-5 shrink-0" /> 
-          <span className="hidden md:inline">Меню</span>
-        </button>
-      </nav>
+      <AiAssistantOverlay isOpen={isAiOpen} onClose={() => setIsAiOpen(false)} />
 
       <ToastContainer />
       <RealtimeProvider />

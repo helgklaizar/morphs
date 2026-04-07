@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@rms/core": "workspace:*",
     "@rms/types": "workspace:*",
     "@rms/ui": "workspace:*",
     "framer-motion": "^12.38.0",

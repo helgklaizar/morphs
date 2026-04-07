@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model MenuCategory {
+  id         String     @id @default(uuid())
+  name       String
+  nameEn     String?
+  nameHe     String?
+  nameUk     String?
+  orderIndex Int        @default(0)
+  items      MenuItem[]
+}
+
+model MenuItem {
+  id                String       @id @default(uuid())
+  name              String
+  description       String?
+  price             Float
+  cost              Float        @default(0)
+  stock             Int          @default(0)
+  isActive          Boolean      @default(true)
+  imageUrl          String?
+  isPoll            Boolean      @default(false)
+  category          MenuCategory? @relation(fields: [categoryId], references: [id])
+  categoryId        String?
+  kitchenDepartment String?
+  isPrep            Boolean      @default(false)
+  unit              String       @default("шт")
+  writeOffOnProduce Boolean      @default(false)
+  
+  // Relations
+  recipeId          String?
+  recipe            Recipe?      @relation(fields: [recipeId], references: [id])
+  orderItems        OrderItem[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model Recipe {
+  id            String             @id @default(uuid())
+  name          String
+  ingredients   RecipeIngredient[]
+  yield         Float              @default(1)
+  menuItems     MenuItem[]
+  createdAt     DateTime           @default(now())
+}
+
+model InventoryItem {
+  id          String             @id @default(uuid())
+  name        String
+  unit        String
+  stock       Float              @default(0)
+  costPerUnit Float              @default(0)
+  minStock    Float              @default(0)
+  recipes     RecipeIngredient[]
+}
+
+model RecipeIngredient {
+  id              String        @id @default(uuid())
+  recipeId        String
+  inventoryItemId String
+  quantity        Float
+  recipe          Recipe        @relation(fields: [recipeId], references: [id])
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  customerName    String
+  customerPhone   String
+  status          String      @default("new") // new, preparing, ready, delivering, completed
+  totalAmount     Float       @default(0)
+  paymentMethod   String      @default("cash")
+  isArchived      Boolean     @default(false)
+  reservationDate String?
+  tableId         String?
+  items           OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model OrderItem {
+  id           String   @id @default(uuid())
+  orderId      String
+  menuItemId   String
+  menuItemName String
+  quantity     Int
+  priceAtTime  Float
+  order        Order    @relation(fields: [orderId], references: [id])
+  menuItem     MenuItem @relation(fields: [menuItemId], references: [id])
+}

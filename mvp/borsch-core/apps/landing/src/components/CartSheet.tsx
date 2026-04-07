@@ -7,6 +7,17 @@ import { useLocaleStore, translate, LOCAL_TRANSLATIONS } from "@/store/localeSto
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 
+const DELIVERY_PRICES: Record<string, number> = {
+  "Хайфа": 30,
+  "Нешер": 40,
+  "Тират Кармель": 40,
+  "Кирьят Ям": 50,
+  "Кирьят Ата": 50,
+  "Кирьят Хаим": 50,
+  "Кирьят Моцкин": 50,
+  "Кирьят Биялик": 50
+};
+
 export default function CartSheet({ landingSettings }: { landingSettings?: Record<string, unknown> }) {
   const { locale, systemTranslations } = useLocaleStore();
   const t = useCallback((key: string, fallback: string) => {
@@ -150,7 +161,7 @@ export default function CartSheet({ landingSettings }: { landingSettings?: Recor
   if (!isOpen) return null;
 
   const total = getTotalPrice();
-  const deliveryFee = type === "delivery" ? 30 : 0;
+  const deliveryFee = type === "delivery" ? (DELIVERY_PRICES[city] || 30) : 0;
   const finalTotal = total + deliveryFee;
 
   const handleCheckout = async (e: React.FormEvent) => {
@@ -203,7 +214,7 @@ export default function CartSheet({ landingSettings }: { landingSettings?: Recor
           order_id: order.id, menu_item_id: item.id, menu_item_name: item.name, quantity: item.quantity, price_at_time: item.price,
         }));
 
-        if (type === "delivery") orderItems.push({ order_id: order.id, menu_item_name: "Доставка", quantity: 1, price_at_time: 30 });
+        if (type === "delivery") orderItems.push({ order_id: order.id, menu_item_name: "Доставка", quantity: 1, price_at_time: deliveryFee });
         if (includeBread) orderItems.push({ order_id: order.id, menu_item_name: "🍞 Хлеб", quantity: 1, price_at_time: 0 });
         if (includeCutlery) orderItems.push({ order_id: order.id, menu_item_name: "🍴 Приборы", quantity: 1, price_at_time: 0 });
 
@@ -360,7 +371,7 @@ export default function CartSheet({ landingSettings }: { landingSettings?: Recor
                   <div className="flex gap-2">
                     {Boolean(landingSettings?.is_delivery_enabled) && (
                       <button type="button" onClick={() => setType("delivery")} className={`flex-1 py-2.5 text-sm font-bold rounded-2xl border transition ${type === "delivery" ? "bg-brand/10 text-brand border-brand/50" : "bg-white/5 border-transparent text-neutral-400"}`}>
-                        {t('delivery', 'Доставка')} (+30 ₪)
+                        {t('delivery', 'Доставка')}
                       </button>
                     )}
                     {Boolean(landingSettings?.is_pickup_enabled) && (
@@ -398,10 +409,11 @@ export default function CartSheet({ landingSettings }: { landingSettings?: Recor
                   {!tableNum && type === "delivery" && (
                      <div className="flex flex-col gap-2">
                        <select required value={city} onChange={e => setCity(e.target.value)} className="w-full bg-zinc-900/50 text-white border border-white/10 px-4 py-3.5 rounded-2xl focus:outline-none focus:border-brand transition appearance-none">
-                         <option value="Хайфа" className="bg-zinc-900">Хайфа</option>
-                         <option value="Нешер" className="bg-zinc-900">Нешер</option>
-                         <option value="Тират Кармель" className="bg-zinc-900">Тират Кармель</option>
-                         <option value="Крайот" className="bg-zinc-900">Крайот</option>
+                         {Object.entries(DELIVERY_PRICES).map(([cityName, price]) => (
+                           <option key={cityName} value={cityName} className="bg-zinc-900">
+                             {cityName} ({price} ₪)
+                           </option>
+                         ))}
                        </select>
                        <div className="grid grid-cols-4 gap-2">
                          <input required value={street} onChange={e => setStreet(e.target.value)} type="text" placeholder={`${t('street', 'Улица')} *`} className="col-span-2 bg-zinc-900/50 text-white border border-white/10 px-4 py-3.5 rounded-2xl focus:outline-none focus:border-brand transition" />

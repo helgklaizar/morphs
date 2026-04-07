@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { format, isToday } from "date-fns";
 import { AnimatePresence } from "framer-motion";
 import { 
-  Archive, Edit2, Trash2, Clock, FileText, RotateCw, Receipt, Users
+  Archive, Edit2, Trash2, Clock, FileText, RotateCw, Receipt, Users, ListOrdered, Activity
 } from "lucide-react";
 import Link from "next/link";
 import { OrderEditModal } from "./components/OrderEditModal";
@@ -18,8 +18,11 @@ import {
 import { OrderStatus, Order } from '@rms/core';
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { KitchenTab } from "./components/KitchenTab";
+import { ClientsTab } from "./components/ClientsTab";
 import { STATUS_CONFIG } from "./config";
 import { OrderCard } from "./components/OrderCard";
+import { useDerivedOrders } from "./hooks/useDerivedOrders";
+import { MegaOrdersView } from "./components/MegaOrdersView";
 
 export default function OrdersPage() {
   // Zustand UI State
@@ -67,63 +70,63 @@ export default function OrdersPage() {
     return acc;
   }, {} as Record<OrderStatus, Order[]>);
 
-  const subscriptionOrders = orders.filter(o => o.customerName.includes("Подписка"));
-
-  const megaProfiles = useMemo(() => {
-    const profiles: Record<string, { phone: string, cleanName: string, orders: Order[], totalSum: number, paymentMethod: string }> = {};
-    subscriptionOrders.forEach(o => {
-      const match = o.customerName.match(/^(.*?)\s*\(Подписка/i);
-      const cleanName = match ? match[1].trim() : o.customerName;
-      const key = `${o.customerPhone}-${cleanName}`;
-      
-      if (!profiles[key]) {
-        profiles[key] = { phone: o.customerPhone, cleanName, orders: [], totalSum: 0, paymentMethod: o.paymentMethod };
-      }
-      profiles[key].orders.push(o);
-      profiles[key].totalSum += o.totalAmount;
-    });
-    return Object.values(profiles);
-  }, [subscriptionOrders]);
+  const { subscriptionOrders, targetMegaProfiles: megaProfiles } = useDerivedOrders(orders);
 
   return (
     <div className="flex h-full flex-col">
       {/* Header / Tabs */}
-      <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5 shrink-0">
-        <h1 className="text-3xl lg:text-4xl font-black tracking-tighter uppercase bg-gradient-to-r from-white to-white/50 bg-clip-text text-transparent">Лента Заказов</h1>
-        <Link 
-          href="/orders-history" 
-          className="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors bg-white/5 px-3 py-1.5 rounded-lg border border-white/5"
-        >
-          <Receipt className="w-4 h-4" /> История / Архив
-        </Link>
-      </div>
+      <div className="flex items-center justify-between pb-4 border-b border-white/10 mb-5 shrink-0 gap-4 flex-wrap">
+        <div className="flex items-center gap-6">
+          <h1 className="text-3xl lg:text-4xl font-black tracking-tighter uppercase bg-gradient-to-r from-white to-white/50 bg-clip-text text-transparent">Заказы</h1>
+          
+          {/* View Toggle */}
+          <div className="hidden md:flex flex-wrap items-center gap-2 shrink-0">
+            <button 
+              onClick={() => setViewMode("regular")}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-[11px] md:text-[13px] font-bold uppercase tracking-wider transition-all border ${viewMode === "regular" ? "bg-white/10 text-white shadow-lg border-white/10" : "border-transparent text-white/40 hover:text-white/80 hover:bg-white/5 bg-transparent"}`}
+            >
+              <ListOrdered className="w-4 h-4 shrink-0" />
+              Разовые
+            </button>
+            <button 
+              onClick={() => setViewMode("mega")}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-[11px] md:text-[13px] font-bold uppercase tracking-wider transition-all border ${viewMode === "mega" ? "bg-white/10 text-white shadow-lg border-white/10" : "border-transparent text-white/40 hover:text-white/80 hover:bg-white/5 bg-transparent"}`}
+            >
+              <Users className="w-4 h-4 shrink-0" />
+              Недельные
+              {subscriptionOrders.length > 0 && (
+                <span className="bg-white/20 px-1.5 py-0.5 rounded text-[9px] font-black">{megaProfiles.length}</span>
+              )}
+            </button>
 
-      {/* View Toggle */}
-      <div className="flex bg-[#141414] p-1.5 rounded-xl border border-white/5 shadow-inner mb-6 shrink-0 w-fit">
-        <button 
-          onClick={() => setViewMode("regular")}
-          className={`px-5 py-2 font-bold text-sm transition-all rounded-lg ${viewMode === "regular" ? "bg-orange-500 text-white shadow-md shadow-orange-500/20" : "text-white/40 hover:text-white/80"}`}
-        >
-          Заказы кухни
-        </button>
-        <button 
-          onClick={() => setViewMode("mega")}
-          className={`px-5 py-2 font-bold text-sm transition-all rounded-lg flex items-center gap-2 ${viewMode === "mega" ? "bg-orange-500 text-white shadow-md shadow-orange-500/20" : "text-white/40 hover:text-white/80"}`}
-        >
-          Мега-профили (Подписки)
-          {subscriptionOrders.length > 0 && (
-            <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">{megaProfiles.length}</span>
-          )}
-        </button>
-        <button 
-          onClick={() => setViewMode("kitchen")}
-          className={`px-5 py-2 font-bold text-sm transition-all rounded-lg ${viewMode === "kitchen" ? "bg-orange-500 text-white shadow-md shadow-orange-500/20" : "text-white/40 hover:text-white/80"}`}
-        >
-          Лента кухни
-        </button>
+            <button 
+              onClick={() => setViewMode("kitchen")}
+              className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-[11px] md:text-[13px] font-bold uppercase tracking-wider transition-all border ${viewMode === "kitchen" ? "bg-white/10 text-white shadow-lg border-white/10" : "border-transparent text-white/40 hover:text-white/80 hover:bg-white/5 bg-transparent"}`}
+            >
+              <Activity className="w-4 h-4 shrink-0" />
+              Кухня
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Link 
+            href="/orders-history" 
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] md:text-[13px] font-bold uppercase tracking-wider transition-all border border-transparent text-white/40 hover:text-white/80 hover:bg-white/5 bg-transparent shrink-0"
+          >
+            <Receipt className="w-4 h-4 shrink-0" /> <span className="hidden md:inline">Архив</span>
+          </Link>
+          <button 
+            onClick={() => setViewMode("clients")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] md:text-[13px] font-bold uppercase tracking-wider transition-all border ${viewMode === "clients" ? "bg-white/10 text-white shadow-lg border-white/10" : "border-transparent text-white/40 hover:text-white/80 hover:bg-white/5 bg-transparent shrink-0"}`}
+          >
+            <Users className="w-4 h-4 shrink-0" /> <span className="hidden md:inline">Клиенты</span>
+          </button>
+        </div>
       </div>
 
       {viewMode === "kitchen" && <KitchenTab />}
+      {viewMode === "clients" && <ClientsTab />}
 
       {/* Filters (only for regular view) */}
       {viewMode === "regular" && (
@@ -197,77 +200,12 @@ export default function OrdersPage() {
                </div>
              )
           ) : (
-            // MEGA ORDERS VIEW
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(500px,1fr))] gap-6 pb-20">
-              {megaProfiles.map(profile => (
-                <div key={profile.phone} className="bg-[#141414] rounded-[18px] border border-green-500/20 shadow-lg flex flex-col overflow-hidden">
-                  <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between bg-green-500/5">
-                    <div>
-                      <h3 className="font-black text-xl text-white uppercase">{profile.cleanName}</h3>
-                      <p className="font-mono text-white/50 text-sm mt-1">{profile.phone}</p>
-                    </div>
-                    <div className="flex items-center gap-4">
-                       <div className="text-right">
-                          <p className="text-xs text-white/30 uppercase font-black tracking-widest mb-1.5 border-b border-white/5 pb-1 inline-block">Итого за неделю</p>
-                          <div className="text-3xl font-black text-green-500 leading-none">
-                            {profile.totalSum} ₪
-                          </div>
-                       </div>
-                       
-                       <div className="flex flex-col gap-2 border-l border-white/10 pl-4">
-                         <button 
-                           onClick={() => handleAcceptSubscription({ orders: profile.orders })}
-                           className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg text-xs"
-                         >
-                           Принять в работу
-                         </button>
-                         <button 
-                           onClick={() => setConfirmDeleteSubscription({ key: profile.phone, orders: profile.orders })}
-                           className="bg-red-500/10 hover:bg-red-500/20 text-red-500 font-bold py-2 px-4 rounded-lg text-xs"
-                         >
-                           Удалить
-                         </button>
-                       </div>
-                    </div>
-                  </div>
-                  <div className="p-5 flex-1 flex flex-col gap-4 bg-[#0a0a0a]">
-                     <div className="flex items-center gap-2 mb-2">
-                       <span className="text-xs font-black uppercase text-white/30 tracking-widest">ДОСТАВКИ ПО ДНЯМ:</span>
-                     </div>
-                     <div className="flex flex-col gap-3">
-                       {profile.orders.map((o, idx) => {
-                         const dayMatch = o.customerName.match(/\[(.*?)\]/);
-                         const dayInfo = dayMatch ? dayMatch[1] : `Заказ ${idx+1}`;
-                         const deliveryInfo = o.customerName.includes("Самовывоз") ? "Самовывоз" : "Доставка";
-                         
-                         return (
-                           <div key={o.id} className="p-3 bg-[#1c1c1e] rounded-xl border border-white/5 flex items-center justify-between gap-4">
-                             <div>
-                               <p className="font-bold text-white/90 text-sm">{dayInfo} <span className="text-orange-500/60 ml-2 text-xs">({deliveryInfo})</span></p>
-                               <p className="text-xs text-white/40 mt-1">{o.items.length} поз., сумма {o.totalAmount} ₪</p>
-                             </div>
-                             <div className="flex items-center gap-2">
-                               <div className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-black text-white/50 border border-white/10">
-                                 Статус: {STATUS_CONFIG[o.status]?.label || o.status}
-                               </div>
-                               <button onClick={() => setEditingOrder(o)} className="p-1.5 rounded-lg bg-white/5 text-white/40 hover:text-white hover:bg-white/10">
-                                 <Edit2 className="w-4 h-4" />
-                               </button>
-                             </div>
-                           </div>
-                         )
-                       })}
-                     </div>
-                  </div>
-                </div>
-              ))}
-              {megaProfiles.length === 0 && (
-                <div className="col-span-full flex h-64 flex-col items-center justify-center">
-                  <Users className="h-16 w-16 text-[#2A2A2A] mb-4" />
-                  <p className="text-xl font-semibold text-gray-500">Нет активных подписок</p>
-                </div>
-              )}
-            </div>
+            <MegaOrdersView 
+              megaProfiles={megaProfiles} 
+              onAcceptSubscription={handleAcceptSubscription}
+              onDeleteSubscription={setConfirmDeleteSubscription}
+              onEditOrder={setEditingOrder}
+            />
           )}
 
           {/* Floating Action Button Alternative (Bottom right fixed) */}

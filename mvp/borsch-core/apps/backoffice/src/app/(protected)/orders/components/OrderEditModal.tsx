@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Plus, Minus, Search } from "lucide-react";
-import { Order, OrderItem, useOrdersStore } from '@rms/core';
+import { Order, OrderItem, useUpdateOrderMutation } from '@rms/core';
 import { useMenuStore } from '@rms/core';
 
 interface Props {
@@ -10,12 +10,15 @@ interface Props {
 }
 
 export function OrderEditModal({ isOpen, onClose, order }: Props) {
-  const { updateOrderFull } = useOrdersStore();
+  const updateOrderMutation = useUpdateOrderMutation();
   const { items: menuItems } = useMenuStore();
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("Хайфа");
+  const [street, setStreet] = useState("");
+  const [house, setHouse] = useState("");
+  const [apt, setApt] = useState("");
   const [isDelivery, setIsDelivery] = useState(false);
   const [payment, setPayment] = useState("cash");
   const [items, setItems] = useState<OrderItem[]>([]);
@@ -27,12 +30,50 @@ export function OrderEditModal({ isOpen, onClose, order }: Props) {
     if (isOpen && order) {
       if (order.customerName.includes("(Доставка:")) {
         const parts = order.customerName.split("(Доставка:");
+        const fullAddress = (parts[1] || "").replace(")", "").trim();
+        
+        let foundCity = "Хайфа";
+        let restAddress = fullAddress;
+        
+        for (const c of ["Хайфа", "Нешер", "Тират Кармель", "Крайот"]) {
+           if (fullAddress.startsWith(c)) {
+              foundCity = c;
+              restAddress = fullAddress.replace(c, "").replace(/^,?\s*/, "").trim();
+              break;
+           }
+        }
+        
+        let parsedApt = "";
+        if (restAddress.includes(", apt. ")) {
+           const aptParts = restAddress.split(", apt. ");
+           parsedApt = aptParts.pop() || "";
+           restAddress = aptParts.join(", apt. ").trim();
+        } else if (restAddress.includes(", кв. ")) {
+           const aptParts = restAddress.split(", кв. ");
+           parsedApt = aptParts.pop() || "";
+           restAddress = aptParts.join(", кв. ").trim();
+        }
+        
+        const words = restAddress.split(" ");
+        let parsedHouse = "";
+        let parsedStreet = restAddress;
+        if (words.length > 1) {
+           parsedHouse = words.pop() || "";
+           parsedStreet = words.join(" ").trim();
+        }
+        
         setName(parts[0].trim());
-        setAddress(parts[1].replace(")", "").trim());
+        setCity(foundCity);
+        setStreet(parsedStreet);
+        setHouse(parsedHouse);
+        setApt(parsedApt);
         setIsDelivery(true);
       } else {
         setName(order.customerName);
-        setAddress("");
+        setCity("Хайфа");
+        setStreet("");
+        setHouse("");
+        setApt("");
         setIsDelivery(false);
       }
       setPhone(order.customerPhone || "");
@@ -43,9 +84,14 @@ export function OrderEditModal({ isOpen, onClose, order }: Props) {
       setSearch("");
       
       if (order.reservationDate) {
-         const d = new Date(order.reservationDate);
-         const localStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-         setResDateObj(localStr);
+         const safeDateStr = order.reservationDate.replace(' ', 'T');
+         const d = new Date(safeDateStr);
+         if (!isNaN(d.getTime())) {
+           const localStr = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+           setResDateObj(localStr);
+         } else {
+           setResDateObj("");
+         }
       } else {
          setResDateObj("");
       }
@@ -55,8 +101,10 @@ export function OrderEditModal({ isOpen, onClose, order }: Props) {
   if (!isOpen || order === null) return null; // Added check for order to satisfy TS
 
   const handleSave = async () => {
-    const finalName = isDelivery ? `${name.trim()} (Доставка: ${address.trim()})` : name.trim();
-    const newTotal = items.reduce((sum, item) => sum + (item.priceAtTime || 0) * item.quantity, 0);
+    const joinedAddress = `${street.trim()} ${house.trim()}${apt.trim() ? ', apt. ' + apt.trim() : ''}`.trim();
+    const finalAddress = `${city}${joinedAddress ? ', ' + joinedAddress : ''}`;
+    const finalName = isDelivery ? `${(name || "").trim()} (Доставка: ${finalAddress})` : (name || "").trim();
+    const newTotal = items.reduce((sum, item) => sum + (item.priceAtTime || item.price || 0) * item.quantity, 0);
 
     let finalReservationDate: string | undefined = undefined;
     if (resDateObj) {
@@ -70,14 +118,58 @@ export function OrderEditModal({ isOpen, onClose, order }: Props) {
       }
     }
 
-    await updateOrderFull({
-      ...order,
-      customerName: finalName,
-      customerPhone: phone.trim(),
-      paymentMethod: payment,
-      items,
-      totalAmount: newTotal,
-      reservationDate: finalReservationDate,
+    // === UPDATE ORDER ITEMS ===
+    try {
+      const pbUrl = process.env.NEXT_PUBLIC_PB_URL || 'https://borsch.shop';
+      const originalItemIds = order.items.map(i => i.id);
+      const currentItemIds = items.map(i => i.id);
+
+      // Delete removed
+      for (const id of originalItemIds) {
+        if (!currentItemIds.includes(id)) {
+          await fetch(`${pbUrl}/api/collections/order_items/records/${id}`, { method: "DELETE" });
+        }
+      }
+
+      // Add or Update
+      for (const item of items) {
+        if (!originalItemIds.includes(item.id)) {
+          // New
+          const newItem: Record<string, any> = {
+             order_id: order.id,
+             menu_item_id: item.menuItemId,
+             menu_item_name: item.menuItemName,
+             quantity: item.quantity,
+             price_at_time: item.priceAtTime || item.price || 0
+          };
+          if (!newItem.menu_item_id) delete newItem.menu_item_id;
+          await fetch(`${pbUrl}/api/collections/order_items/records`, { 
+             method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newItem) 
+          });
+        } else {
+          // Update
+          const orig = order.items.find(i => i.id === item.id);
+          if (orig && orig.quantity !== item.quantity) {
+             await fetch(`${pbUrl}/api/collections/order_items/records/${item.id}`, { 
+                method: "PATCH", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ quantity: item.quantity }) 
+             });
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to update items", e);
+    }
+
+    // === UPDATE ORDER RECORD ===
+    updateOrderMutation.mutate({
+      id: order.id,
+      payload: {
+        customer_name: finalName,
+        customer_phone: (phone || "").trim(),
+        payment_method: payment,
+        total_amount: newTotal,
+        reservation_date: finalReservationDate,
+      } as any
     });
     onClose();
   };
@@ -91,7 +183,7 @@ export function OrderEditModal({ isOpen, onClose, order }: Props) {
     setItems(newItems);
   };
 
-  const currentTotal = items.reduce((sum, item) => sum + (item.priceAtTime || 0) * item.quantity, 0);
+  const currentTotal = items.reduce((sum, item) => sum + (item.priceAtTime || item.price || 0) * item.quantity, 0);
 
   const filteredMenu = menuItems.filter(m => m.name.toLowerCase().includes(search.toLowerCase()));
 
@@ -198,9 +290,30 @@ export function OrderEditModal({ isOpen, onClose, order }: Props) {
                     </div>
 
                     {isDelivery && (
-                      <div className="animate-in fade-in slide-in-from-top-2">
-                        <label className="text-xs text-white/50 mb-1 block">Адрес</label>
-                        <input type="text" value={address} onChange={e => setAddress(e.target.value)} className="w-full bg-[#242424] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500 border border-white/5" />
+                      <div className="animate-in fade-in slide-in-from-top-2 flex flex-col gap-3">
+                        <div>
+                          <label className="text-xs text-white/50 mb-1 block">Город</label>
+                          <select value={city} onChange={e => setCity(e.target.value)} className="w-full bg-[#242424] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-orange-500 border border-white/5 appearance-none">
+                            <option value="Хайфа">Хайфа</option>
+                            <option value="Нешер">Нешер</option>
+                            <option value="Тират Кармель">Тират Кармель</option>
+                            <option value="Крайот">Крайот</option>
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="flex-[2] min-w-0">
+                            <label className="text-xs text-white/50 mb-1 block">Улица</label>
+                            <input type="text" value={street} onChange={e => setStreet(e.target.value)} placeholder="Ленина" className="w-full bg-[#242424] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500 border border-white/5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <label className="text-xs text-white/50 mb-1 block">Дом</label>
+                            <input type="text" value={house} onChange={e => setHouse(e.target.value)} placeholder="5" className="w-full bg-[#242424] rounded-lg px-2 py-2.5 text-sm focus:outline-none focus:border-orange-500 border border-white/5 text-center" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <label className="text-xs text-white/50 mb-1 block">Кв.</label>
+                            <input type="text" value={apt} onChange={e => setApt(e.target.value)} placeholder="12" className="w-full bg-[#242424] rounded-lg px-2 py-2.5 text-sm focus:outline-none focus:border-orange-500 border border-white/5 text-center" />
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -243,7 +356,7 @@ export function OrderEditModal({ isOpen, onClose, order }: Props) {
                       <div key={i} className="flex items-center justify-between bg-[#242424] p-3 rounded-xl border border-white/5">
                         <div className="flex-1 mr-2">
                            <div className="text-sm font-medium leading-tight">{item.menuItemName}</div>
-                           {!isSubscription && <div className="text-[11px] text-white/40 mt-0.5">{(item.priceAtTime || 0)} ₪ x {item.quantity} = {(item.priceAtTime || 0) * item.quantity} ₪</div>}
+                           {!isSubscription && <div className="text-[11px] text-white/40 mt-0.5">{(item.priceAtTime || item.price || 0)} ₪ x {item.quantity} = {(item.priceAtTime || item.price || 0) * item.quantity} ₪</div>}
                         </div>
                         <div className="flex items-center gap-2">
                           <button onClick={() => updateQuantity(i, -1)} className="w-7 h-7 bg-white/5 rounded-md flex items-center justify-center hover:bg-white/10 text-red-400"><Minus className="w-4 h-4"/></button>

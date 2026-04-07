@@ -14,7 +14,7 @@ interface CartState {
   customerPhone: string;
   customerAddress: string;
   paymentMethod: string;
-  orderType: 'dine_in' | 'pickup' | 'delivery';
+  orderType: 'dine_in' | 'pickup' | 'delivery' | 'preorder';
   wantsBread: boolean;
   wantsCutlery: boolean;
   reservationDate: string | null;
@@ -23,7 +23,7 @@ interface CartState {
   updateQuantity: (id: string, delta: number) => void;
   clearCart: () => void;
   setCustomer: (name: string, phone: string, address?: string) => void;
-  setOrderType: (type: 'dine_in' | 'pickup' | 'delivery') => void;
+  setOrderType: (type: 'dine_in' | 'pickup' | 'delivery' | 'preorder') => void;
   toggleBread: () => void;
   toggleCutlery: () => void;
   setPaymentMethod: (method: string) => void;
