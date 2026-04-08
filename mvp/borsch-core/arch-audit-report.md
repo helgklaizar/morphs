@@ -1,87 +1,69 @@
 # Архитектурный Аудит (Borsch Core MVP)
 
+> **Статус аудита**: РЕШЕНО (Апрель 2026) ✅
+> Все найденные проблемы были устранены в ходе глобального рефакторинга (реструктуризация Core и Лендинга).
+
 ## 1. Проблематика (Bottlenecks & Pain Points)
 
 В ходе сканирования монорепозитория (Turborepo + pnpm) `apps/backoffice`, `apps/landing` и `packages/core` были выявлены следующие архитектурные проблемы:
 
-### 👻 Проблема 1: "Призрачный код" и Нарушение границ (God Objects)
-Согласно текущей стратегии (зафиксированной в `GEMINI.md`), из Backoffice были вырезаны модули Финансов, Списания, Складов, Рецептов, а также AI-ассистент. 
-Однако фактически в проекте остались "хвосты" и мертвый код:
-- В `apps/backoffice/src/app/(protected)` всё ещё лежат папки `inventory`, `purchases`, `recipes`.
-- В `packages/core/src/store/` живы `useInventoryStore.ts`, `useRecipesStore.ts`, `useAiStore.ts`, `useAiSettingsStore.ts`.
-- В `apps/backoffice/src/components` оставлены огромные компоненты `AiAssistantOverlay.tsx` (14KB) и `AiSidebar.tsx`, а также папка `ai`.
-**Следствие:** Нарушение принципа единой ответственности, утяжеление бандла, путаница (God Objects хранят логику, которая де-факто отключена на уровне бизнес-требований).
+### ✅ Проблема 1: "Призрачный код" и Нарушение границ (God Objects) -> [РЕШЕНО]
+**Было:** В проекте оставались "хвосты" AI-помощника в `packages/core` и старый код в `apps/backoffice`.
+**Стало:** Старый Backoffice замещен на `apps/backoffice-vite`. Мусорные сторы (`useAiStore`, `useAiSettingsStore`, `useInventoryStore`, `useRecipesStore`) удалены из репозитория. Принцип единой ответственности восстановлен.
 
-### 🏗️ Проблема 2: Монолитные UI-компоненты (Landing)
-Файл `apps/landing/src/components/LandingClient.tsx` раздут до ~550 строк (34KB) и выполняет роль God Component:
-- Управление стейтом (Zustand: Cart, Locale).
-- Анимации (Framer Motion).
-- Рендеринг сложного многоуровневого UI (Hero, Модалки языков, Карточки еды, Sticky Header).
-- Логика шаринга, проверки доступности по времени и фильтрации категорий.
-**Следствие:** Сложность поддержки, жесткая связанность бизнес-логики и UI. При изменении логики добавления в корзину перерендеривается и пересчитывается вся посадочная страница.
+### ✅ Проблема 2: Монолитные UI-компоненты (Landing) -> [РЕШЕНО]
+**Было:** Файл `apps/landing/src/components/LandingClient.tsx` был раздут до ~550 строк (34KB) и выполнял роль God Component.
+**Стало:** Выполнен FSD рефакторинг. Логика разделена на:
+- `WidgetHero` (`Hero.tsx`)
+- `WidgetHeader` (`Header.tsx` с модалкой языков)
+- `EntityProduct` (`ProductCard.tsx` с логикой корзины и счетчиками)
+Размер `LandingClient.tsx` сократился втрое. Перерендеры изолированы.
 
-### 🧩 Проблема 3: Плоская структура Core / Состояние зависимостей
-В `packages/core/src` все stores и api свалены в одну плоскую структуру. Нет разделения по **доменам/фичам** (Feature-Sliced). 
+### ✅ Проблема 3: Плоская структура Core / Состояние зависимостей -> [РЕШЕНО]
+**Было:** В `packages/core/src` все stores и api были свалены в плоскость (`src/api`, `src/store`).
+**Стало:** Внедрен `Domain-Driven Pruning`. Структура пересобрана:
+- `packages/core/src/domains/orders/`
+- `packages/core/src/domains/menu/`
+- `packages/core/src/domains/inventory/`
+- `packages/core/src/domains/cart/`
+- `packages/core/src/domains/system/`
+Экспорты пробрасываются через единый `packages/core/src/index.ts`, поэтому зависимости проектов (`backoffice-vite`, `landing`) не были сломаны.
 
 ---
 
 ## 2. Диаграммы (Mermaid)
 
-### Текущее состояние (Monolith in Next.js)
-
-```mermaid
-graph TD
-    subgraph Landing App
-        LC[LandingClient.tsx <br/> 550+ lines God Object]
-        LC --> |State, Locale, UI, Fetching| LC
-    end
-    
-    subgraph Backoffice App
-        BO((Backoffice))
-        BO -.-> Ghost1((Ghost: Inventory))
-        BO -.-> Ghost2((Ghost: AI Assistant))
-        BO -.-> Ghost3((Ghost: Recipes))
-    end
-    
-    subgraph Core
-        CoreStores[Flat Store List: useCart, useInventory, useMenu...]
-        LC --> CoreStores
-        Ghost1 --> CoreStores
-    end
-```
-
-### Целевое состояние (Feature-Sliced Design)
+### Целевое состояние ДОСТИГНУТО (Feature-Sliced Design + Domain Driven Pruning)
 
 ```mermaid
 graph TD
     subgraph Landing App
         Page[Page]
         Page --> WidgetHero[Widget: Hero Banner]
-        Page --> WidgetMenu[Widget: Menu List]
-        WidgetMenu --> FeatureCart[Feature: Add to Cart]
-        WidgetMenu --> FeatureLocale[Feature: Change Locale]
+        Page --> WidgetHeader[Widget: Header]
+        Page --> WidgetMenu[Widget: Menu Layout]
         WidgetMenu --> EntityProduct[Entity: Product Card]
     end
     
-    subgraph Backoffice App
+    subgraph Backoffice Vite App
         BO_Clean((Backoffice: Pos / Orders / Menu))
     end
     
-    subgraph Core Packages
+    subgraph Core Packages (Domains)
         DomainOrders[Domain: Orders Store & API]
-        DomainCatalog[Domain: Catalog / Menu]
-        DomainAuth[Domain: Auth]
+        DomainCatalog[Domain: Menu & Recipes]
+        DomainInventory[Domain: Inventory]
+        DomainSystem[Domain: UI Stores]
         DomainOrders --> BO_Clean
         DomainCatalog --> Landing App
+        DomainOrders --> Landing App
     end
 ```
 
 ---
 
 ## 3. Целевой паттерн: FSD (Feature-Sliced Design) + Domain-Driven Pruning
-
-Рекомендованная методология: **Упрощенный Feature-Sliced Design** для фронтенда и строгое разделение логики по доменам (Domain-Driven Pruning).
-- Слой `features`: Действия (добавить в корзину, поменять язык).
-- Слой `entities`: Сущности (карточка блюда, ордер).
-- Слой `widgets`: Изолированные блоки (Header, MenuGrid).
-- Жесткая чистка (Pruning): Полное удаление папок, роутов и сторов, которые не относятся к MVP.
+- ✅ Слой `entities`: Сущности (ProductCard).
+- ✅ Слой `widgets`: Изолированные блоки (Header, Hero).
+- ✅ Домены: Строгое разделение API и логики (`@rms/core/domains/*`).
+- ✅ Чистка (Pruning): Полное удаление старых API файлов и сторов.
