@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useToastStore, Toast, ToastType } from '@rms/core';
+import { useToastStore } from '@rms/core';
+import type { Toast, ToastType } from '@rms/core';
 
 const icons: Record<ToastType, string> = {
   success: '✅',

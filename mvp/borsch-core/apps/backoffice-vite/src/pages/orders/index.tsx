@@ -15,7 +15,7 @@ import {
   useDeleteOrderMutation,
   useArchiveOrderMutation
 } from '@rms/core';
-import { OrderStatus, Order } from '@rms/core';
+import type { OrderStatus, Order } from '@rms/core';
 import { ConfirmModal } from "@/components/ConfirmModal";
 import { KitchenTab } from "./components/KitchenTab";
 import { ClientsTab } from "./components/ClientsTab";

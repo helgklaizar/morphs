@@ -13,9 +13,10 @@ import {
   Coffee,
 } from "lucide-react";
 import { useOrdersQuery, useUpdateOrderStatusMutation } from '@rms/core';
-import { useMenuStore, MenuItem } from '@rms/core';
+import { useMenuQuery } from '@rms/core';
+import type { MenuItem } from '@rms/core';
 import { useToastStore } from '@rms/core';
-import { OrderStatus, Order } from "@rms/types";
+import type { OrderStatus, Order } from "@rms/types";
 
 // KDS Columns config
 const COLUMNS: {
@@ -189,16 +190,9 @@ function OrderCard({
 
 export function KitchenTab() {
   const { data: orders = [] } = useOrdersQuery();
-  const { items: menuItems, fetchMenuItems, subscribeToMenu, unsubscribeFromMenu } = useMenuStore();
-  const [activeTab, setActiveTab] = useState<string>("all");
-
+  const { data: menuItems = [] } = useMenuQuery();
   useEffect(() => {
-    fetchMenuItems();
-    subscribeToMenu();
-    return () => {
-      unsubscribeFromMenu();
-    };
-  }, [fetchMenuItems, subscribeToMenu, unsubscribeFromMenu]);
+  }, []);
 
   const departments = useMemo(() => {
     const deps = new Set<string>();

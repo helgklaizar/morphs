@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Order } from '@rms/core';
+import type { Order } from '@rms/core';
 
 export const useDerivedOrders = (orders: Order[]) => {
   const subscriptionOrders = useMemo(() => {

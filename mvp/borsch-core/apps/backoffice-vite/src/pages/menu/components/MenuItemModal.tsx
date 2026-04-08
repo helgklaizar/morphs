@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { X, Trash2, Image as ImageIcon, Plus } from "lucide-react";
-import { MenuItem, useRecipesStore, useSaveMenuItemMutation, useDeleteMenuItemMutation, useCategoriesQuery, useMenuQuery } from '@rms/core';
+import type { MenuItem } from '@rms/core';
+import { useRecipesQuery, useSaveMenuItemMutation, useDeleteMenuItemMutation, useCategoriesQuery, useMenuQuery } from '@rms/core';
 import { ConfirmModal } from "@/components/ConfirmModal";
 
 interface Props {
@@ -16,11 +17,10 @@ export function MenuItemModal({ isOpen, onClose, item }: Props) {
   const deleteMenuItemMut = useDeleteMenuItemMutation();
   const { data: menuCategories = [] } = useCategoriesQuery();
   const { data: items = [] } = useMenuQuery();
-  const { recipes, fetchRecipes } = useRecipesStore();
+  const { data: recipes = [] } = useRecipesQuery();
 
   useEffect(() => {
-    fetchRecipes();
-  }, [fetchRecipes]);
+  }, [item?.id]);
 
   const existingDepartments = Array.from(new Set(items.map(i => i.kitchenDepartment).filter(Boolean)));
 

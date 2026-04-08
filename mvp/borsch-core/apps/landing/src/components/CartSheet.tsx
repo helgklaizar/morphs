@@ -199,9 +199,9 @@ export default function CartSheet({ landingSettings }: { landingSettings?: Recor
       priceAtTime: item.price
     }));
 
-    if (type === "delivery") orderItems.push({ menuItemId: "delivery", menuItemName: "Доставка", quantity: 1, priceAtTime: deliveryFee });
-    if (includeBread) orderItems.push({ menuItemId: "bread", menuItemName: "🍞 Хлеб", quantity: 1, priceAtTime: 0 });
-    if (includeCutlery) orderItems.push({ menuItemId: "cutlery", menuItemName: "🍴 Приборы", quantity: 1, priceAtTime: 0 });
+    if (type === "delivery") orderItems.push({ menuItemId: null, menuItemName: "Доставка", quantity: 1, priceAtTime: deliveryFee });
+    if (includeBread) orderItems.push({ menuItemId: null, menuItemName: "🍞 Хлеб", quantity: 1, priceAtTime: 0 });
+    if (includeCutlery) orderItems.push({ menuItemId: null, menuItemName: "🍴 Приборы", quantity: 1, priceAtTime: 0 });
 
     const orderData = {
       customerName: displayName,

@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { X, Plus, Minus, Search } from "lucide-react";
-import { Order, OrderItem, useUpdateOrderMutation } from '@rms/core';
-import { useMenuStore } from '@rms/core';
+import { useUpdateOrderMutation } from '@rms/core';
+import type { Order, OrderItem } from '@rms/core';
+import { useMenuQuery } from '@rms/core';
 
 interface Props {
   isOpen: boolean;
@@ -11,7 +12,7 @@ interface Props {
 
 export function OrderEditModal({ isOpen, onClose, order }: Props) {
   const updateOrderMutation = useUpdateOrderMutation();
-  const { items: menuItems } = useMenuStore();
+  const { data: menuItems = [] } = useMenuQuery();
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");

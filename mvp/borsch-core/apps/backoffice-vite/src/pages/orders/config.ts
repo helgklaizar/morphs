@@ -1,4 +1,4 @@
-import { OrderStatus } from '@rms/core';
+import type { OrderStatus } from '@rms/core';
 
 export const STATUS_CONFIG: Record<OrderStatus, { label: string, colorClass: string, hex: string }> = {
   new: { label: 'Новый', colorClass: 'text-orange-500 bg-orange-500', hex: '#FF6B00' },

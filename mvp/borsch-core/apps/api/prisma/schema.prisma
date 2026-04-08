@@ -74,6 +74,7 @@ model Client {
   id              String      @id @default(uuid())
   phone           String      @unique
   name            String?
+  address         String?
   totalOrders     Int         @default(0)
   ltv             Float       @default(0) // Lifetime value
   lastOrderDate   DateTime?
@@ -104,12 +105,12 @@ model Order {
 model OrderItem {
   id           String   @id @default(uuid())
   orderId      String
-  menuItemId   String
+  menuItemId   String?
   menuItemName String
   quantity     Int
   priceAtTime  Float
-  order        Order    @relation(fields: [orderId], references: [id])
-  menuItem     MenuItem @relation(fields: [menuItemId], references: [id])
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem     MenuItem? @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
 }
 
 model Supplier {

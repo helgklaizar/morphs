@@ -18,7 +18,8 @@ import {
 import { Link } from "react-router-dom";
 
 import { MenuSharedHeader } from "@/components/MenuSharedHeader";
-import { useMenuQuery, useMenuSubscriptions, useUpdateMenuStockMutation, useToggleMenuActiveMutation, MenuItem } from '@rms/core';
+import { useMenuQuery, useMenuSubscriptions, useUpdateMenuStockMutation, useToggleMenuActiveMutation } from '@rms/core';
+import type { MenuItem } from '@rms/core';
 import { MenuItemModal } from "./components/MenuItemModal";
 
 export default function MenuPage() {

@@ -45,7 +45,8 @@ import {
   CollapsibleTrigger 
 } from "@/components/ui/collapsible";
 import { pb } from "@/lib/pb";
-import { useModulesStore, SystemModuleId } from '@rms/core';
+import { useModulesStore } from '@rms/core';
+import type { SystemModuleId } from '@rms/core';
 import {
   Sidebar,
   SidebarContent,

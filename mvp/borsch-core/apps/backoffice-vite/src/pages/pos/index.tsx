@@ -15,9 +15,9 @@ import {
   XCircle,
   Clock
 } from "lucide-react";
-import { useMenuStore, useCartStore, useToastStore, useCreateOrderMutation } from '@rms/core';
+import { useMenuQuery, useCategoriesQuery, useCartStore, useToastStore, useCreateOrderMutation } from '@rms/core';
 import { useDynamicPricing } from "../../hooks/useDynamicPricing";
-import { Table } from "@rms/types";
+import type { Table } from "@rms/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { StoreStatusControls } from "@/components/StoreStatusControls";
 
@@ -33,7 +33,8 @@ const DELIVERY_PRICES: Record<string, number> = {
 };
 
 export default function CheckoutPage() {
-  const { categories, items: allMenuItems, fetchMenuItems, isLoading: menuLoading } = useMenuStore();
+  const { data: allMenuItems = [], isLoading: menuLoading } = useMenuQuery();
+  const { data: categories = [] } = useCategoriesQuery();
   const { 
     items: cartItems, 
     addToCart, 
@@ -83,10 +84,7 @@ export default function CheckoutPage() {
       .catch(console.error);
   }, []);
 
-  useEffect(() => {
-    fetchMenuItems();
-    useMenuStore.getState().fetchCategories();
-  }, [fetchMenuItems]);
+
 
   const filteredItems = useMemo(() => {
     let items = allMenuItems;

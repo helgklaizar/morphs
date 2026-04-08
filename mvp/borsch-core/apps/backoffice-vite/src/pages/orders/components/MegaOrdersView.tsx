@@ -1,4 +1,4 @@
-import { Order } from '@rms/core';
+import type { Order } from '@rms/core';
 import { Users, Edit2 } from 'lucide-react';
 import { STATUS_CONFIG } from '../config';
 

@@ -2,8 +2,8 @@
 
 import { format } from "date-fns";
 import { Archive, Edit2, Trash2, Clock, FileText, ChevronRight, CheckCircle2 } from "lucide-react";
-import { Order, OrderStatus, useUpdateOrderStatusMutation } from '@rms/core';
-import { PDFGenerator } from "@/lib/pdf";
+import { useUpdateOrderStatusMutation } from '@rms/core';
+import type { Order, OrderStatus } from '@rms/core';
 import { STATUS_CONFIG } from "../config";
 
 export function OrderCard({ order, onEdit, onArchive, onDelete }: { order: Order; onEdit: () => void; onArchive: () => void; onDelete: () => void }) {
