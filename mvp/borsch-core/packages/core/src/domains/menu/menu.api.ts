@@ -1,6 +1,6 @@
 import { MenuItem, MenuCategory } from '@rms/types';
+import { API_URL } from '../../config';
 
-const API_URL = 'http://localhost:3002/api';
 
 export const fetchCategories = async (): Promise<MenuCategory[]> => {
   const res = await fetch(`${API_URL}/menu/categories`); // Пока нет, но добавим если надо

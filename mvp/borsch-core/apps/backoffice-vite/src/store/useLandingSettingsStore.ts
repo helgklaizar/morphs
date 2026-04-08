@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+const API_URL = 'http://localhost:3002/api';
+
 export interface LandingSettings {
   id: string;
   is_pickup_enabled: boolean;
@@ -15,19 +17,53 @@ interface LandingSettingsState {
 }
 
 export const useLandingSettingsStore = create<LandingSettingsState>((set, get) => ({
-  settings: {
-    id: "mock",
-    is_pickup_enabled: true,
-    is_delivery_enabled: true,
-    is_preorder_mode: false,
-  },
+  settings: null,
   isLoading: false,
+
   fetchSettings: async () => {
-    // Временно замокано до миграции настроек в Prisma
+    set({ isLoading: true });
+    try {
+      const res = await fetch(`${API_URL}/system/settings`);
+      const json = await res.json();
+      const s = json.items?.[0];
+      if (s) {
+        set({
+          settings: {
+            id: s.id || 'default',
+            is_pickup_enabled: s.is_pickup_enabled ?? s.isPickupEnabled ?? true,
+            is_delivery_enabled: s.is_delivery_enabled ?? s.isDeliveryEnabled ?? true,
+            is_preorder_mode: s.is_preorder_mode ?? s.isPreorderMode ?? false,
+          }
+        });
+      }
+    } catch (e) {
+      console.error('[LandingSettingsStore] fetch error', e);
+    } finally {
+      set({ isLoading: false });
+    }
   },
+
   updateSettings: async (updates) => {
     const current = get().settings;
     if (!current) return;
-    set({ settings: { ...current, ...updates } });
+    // Optimistic update
+    const merged = { ...current, ...updates };
+    set({ settings: merged });
+    // Persist to API
+    try {
+      await fetch(`${API_URL}/system/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isPickupEnabled: merged.is_pickup_enabled,
+          isDeliveryEnabled: merged.is_delivery_enabled,
+          isPreorderMode: merged.is_preorder_mode,
+        }),
+      });
+    } catch (e) {
+      console.error('[LandingSettingsStore] update error', e);
+      // Rollback
+      set({ settings: current });
+    }
   }
 }));

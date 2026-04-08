@@ -76,7 +76,7 @@ test.describe('End-to-End Order Flow', () => {
         throw e;
       }
     } else {
-      console.log("No items available to order, skipping end-to-end checkout step.");
+      throw new Error("No items available to order, skipping end-to-end checkout step.");
     }
   });
 });

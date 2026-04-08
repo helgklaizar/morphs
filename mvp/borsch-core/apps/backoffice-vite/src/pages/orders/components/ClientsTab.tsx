@@ -1,60 +1,10 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { pb } from "@/lib/pb";
+import { useClientsQuery } from "@rms/core";
 import { Users, Phone, MapPin } from "lucide-react";
 
 export function ClientsTab() {
-  const [clients, setClients] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: clients = [], isLoading } = useClientsQuery();
 
-  useEffect(() => {
-    const fetchClients = async () => {
-      setLoading(true);
-      try {
-        // Fetch all orders that have a customer phone to aggregate them
-        // We will pull the latest 500 orders just to be safe and aggregate clients
-        const records = await pb.collection('orders').getList(1, 500, {
-           filter: 'customer_phone != ""',
-           sort: '-created',
-        });
-
-        const acc: Record<string, any> = {};
-        
-        records.items.forEach(order => {
-           const phone = order.customer_phone;
-           if (!phone) return;
-           
-           if (!acc[phone]) {
-              acc[phone] = { 
-                 phone, 
-                 name: order.customer_name || '', 
-                 address: order.customer_address || '', 
-                 count: 0, 
-                 totalAmount: 0,
-                 lastOrder: order.created
-              };
-           }
-           acc[phone].count += 1;
-           acc[phone].totalAmount += order.total_amount || 0;
-           
-           if (!acc[phone].name && order.customer_name) acc[phone].name = order.customer_name;
-           if (!acc[phone].address && order.customer_address) acc[phone].address = order.customer_address;
-        });
-
-        const results = Object.values(acc).sort((a: any, b: any) => b.totalAmount - a.totalAmount);
-        setClients(results);
-      } catch (err) {
-        console.error("Ошибка при получении клиентов:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchClients();
-  }, []);
-
-  if (loading) {
+  if (isLoading) {
      return (
        <div className="flex justify-center items-center h-64">
          <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin mb-4" />
@@ -74,11 +24,12 @@ export function ClientsTab() {
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(350px,1fr))] gap-6 pb-20">
       {clients.map((client: any) => {
-        let cleanName = client.name.replace(/\s*\((Самовывоз|Доставка.*?)\)/i, '');
+        const cleanName = client.name?.replace(/\s*\((Самовывоз|Доставка.*?)\)/i, '');
+        const orderCount = client.orders?.length || 0;
         
         return (
           <div 
-            key={client.phone} 
+            key={client.id} 
             className="flex flex-col bg-[#141414] rounded-2xl border border-white/10 h-full shadow-2xl transition-all overflow-hidden relative"
             style={{ boxShadow: `0 8px 32px -8px #6366f125` }}
           >
@@ -95,7 +46,7 @@ export function ClientsTab() {
                  
                  <div className="flex items-center gap-2 shrink-0">
                     <div className="px-3 py-1 rounded-xl text-xs font-bold bg-white/5 text-white/50 border border-white/5">
-                      {client.count} заказов
+                      {orderCount} заказов
                     </div>
                  </div>
                </div>
@@ -114,7 +65,7 @@ export function ClientsTab() {
                    Сумма LTV
                  </div>
                  <div className="font-black text-emerald-400 text-xl">
-                   {client.totalAmount} ₪
+                   {Math.round(client.ltv || 0)} ₪
                  </div>
                </div>
              </div>

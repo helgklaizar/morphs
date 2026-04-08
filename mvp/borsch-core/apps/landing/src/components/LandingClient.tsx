@@ -143,39 +143,10 @@ export default function LandingClient({ menuItems, landingSettings, categories, 
         setSelectedCategory={setSelectedCategory} 
       />
 
-      {/* Marketing Banners */}
-      <section className="px-4 sm:px-6 md:px-12 max-w-7xl mx-auto mt-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {landingSettings?.show_promo_block && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-gradient-to-br from-orange-500/20 to-rose-500/10 border border-orange-500/20 rounded-2xl p-5 flex items-center justify-between shadow-lg">
-              <div>
-                <h3 className="text-orange-400 font-black text-lg mb-1">{t("promo_title", "Скидка на заказ!")}</h3>
-                <p className="text-white/80 text-sm">{t("promo_desc", "Используйте код WELCOME10 в корзине и получите 10% скидку.")}</p>
-              </div>
-              <div className="bg-orange-500 text-white font-black px-4 py-2 rounded-xl text-lg tracking-wider transform -rotate-2 border border-orange-400/50 shadow-md">
-                WELCOME10
-              </div>
-            </motion.div>
-          )}
 
-          {landingSettings?.show_loyalty_block && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-gradient-to-br from-purple-500/20 to-fuchsia-500/10 border border-purple-500/20 rounded-2xl p-5 flex items-start gap-4 shadow-lg">
-              <div className="bg-purple-500/20 text-purple-400 p-3 rounded-xl shrink-0">
-                <ShoppingBag className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-purple-400 font-black text-lg mb-1">{t("loyalty_title", "Программа кэшбека")}</h3>
-                <p className="text-white/80 text-sm">
-                  {t("loyalty_desc", "Мы возвращаем 5% с каждого заказа! Просто укажите телефон в корзине.")}
-                </p>
-              </div>
-            </motion.div>
-          )}
-        </div>
-      </section>
 
       <MenuGrid 
-        filteredItems={filteredItems} 
+        filteredItems={filteredItems.filter((i: any) => i.isActive !== false && i.is_active !== false)} 
         forceTomorrow={forceTomorrow} 
         reservationDateOffset={reservationDateOffset} 
         landingSettings={landingSettings} 

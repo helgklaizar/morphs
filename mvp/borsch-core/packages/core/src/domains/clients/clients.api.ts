@@ -1,6 +1,6 @@
 import { Client } from '@rms/types';
+import { API_URL } from '../../config';
 
-const API_URL = 'http://localhost:3002/api';
 
 export const fetchClients = async (): Promise<Client[]> => {
   const res = await fetch(`${API_URL}/clients`);

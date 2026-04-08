@@ -24,21 +24,24 @@ class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
 
-    // Get PocketBase URL, defaults appropriately
-    const pbUrl = process.env.NEXT_PUBLIC_POCKETBASE_URL || "http://127.0.0.1:8090";
+    // Send crash report to our new System API
+    // The endpoint will be created in the next step
+    const apiUrl = typeof window !== 'undefined' ? (window as any).API_URL || "http://localhost:3002/api" : "http://localhost:3002/api";
 
-    // Send crash report to PocketBase
-    fetch(`${pbUrl}/api/monitor/logs`, {
+    fetch(`${apiUrl}/system/logs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        deviceId: "POS-Mac", // This can be dynamic in a real app
-        error: error.message,
-        componentStack: errorInfo.componentStack,
+        level: "error",
+        source: "backoffice-ui",
+        message: error.message,
+        details: errorInfo.componentStack,
+        timestamp: new Date().toISOString()
       }),
     }).catch((apiError) => {
       console.error("Failed to send error to monitor API", apiError);
     });
+
   }
 
   public render() {

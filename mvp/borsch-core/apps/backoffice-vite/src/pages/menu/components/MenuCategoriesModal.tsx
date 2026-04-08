@@ -1,55 +1,52 @@
 import { useState, useEffect } from "react";
 import { X, Plus, GripVertical, Trash2, Edit2, Check, Save } from "lucide-react";
-import { pb } from "@/lib/pb";
 import { ConfirmModal } from "@/components/ConfirmModal";
-import { useToastStore } from '@rms/core';
+import { useToastStore, useCategoriesQuery } from '@rms/core';
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Category {
   id: string;
   name: string;
-  order_index: number;
 }
 
 export function MenuCategoriesModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { data: categories = [], isLoading, refetch } = useCategoriesQuery();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<{ id: string, name: string } | null>(null);
-
-  const fetchCategories = async () => {
-    setLoading(true);
-    try {
-      const records = await pb.collection('menu_categories').getFullList<Category>({ sort: 'order_index' });
-      setCategories(records);
-    } catch (error: any) {
-      console.error(error);
-    }
-    setLoading(false);
-  };
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (isOpen) fetchCategories();
-  }, [isOpen]);
+    if (isOpen) refetch();
+  }, [isOpen, refetch]);
 
   const handleAdd = async () => {
     if (!newTitle.trim()) return;
-    const maxOrder = categories.reduce((max, c) => Math.max(max, c.order_index), 0);
     try {
-      await pb.collection('menu_categories').create({ name: newTitle.trim(), order_index: maxOrder + 1 });
+      await fetch('http://localhost:3002/api/menu/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newTitle.trim() })
+      });
       setNewTitle("");
-      fetchCategories();
+      queryClient.invalidateQueries({ queryKey: ['menu_categories'] });
+      refetch();
     } catch (error: any) {
-      useToastStore.getState().error("Ошибка при добавлении категории: " + error.message);
+      useToastStore.getState().error("Ошибка при добавлении: " + error.message);
     }
   };
 
   const handleUpdate = async (id: string, updates: Partial<Category>) => {
     try {
-      await pb.collection('menu_categories').update(id, updates);
+      await fetch(`http://localhost:3002/api/menu/categories/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
       setEditingId(null);
-      fetchCategories();
+      queryClient.invalidateQueries({ queryKey: ['menu_categories'] });
+      refetch();
     } catch (error: any) {
       useToastStore.getState().error("Ошибка: " + error.message);
     }
@@ -62,8 +59,9 @@ export function MenuCategoriesModal({ isOpen, onClose }: { isOpen: boolean; onCl
   const executeDelete = async () => {
     if (!confirmDelete) return;
     try {
-      await pb.collection('menu_categories').delete(confirmDelete.id);
-      fetchCategories();
+      await fetch(`http://localhost:3002/api/menu/categories/${confirmDelete.id}`, { method: 'DELETE' });
+      queryClient.invalidateQueries({ queryKey: ['menu_categories'] });
+      refetch();
       setConfirmDelete(null);
     } catch (error: any) {
       useToastStore.getState().error("Ошибка при удалении: " + error.message);
@@ -86,7 +84,7 @@ export function MenuCategoriesModal({ isOpen, onClose }: { isOpen: boolean; onCl
 
         {/* Categories List */}
         <div className="flex-1 overflow-y-auto p-5 space-y-3">
-          {loading ? (
+        {isLoading ? (
             <div className="flex justify-center py-10 opacity-50"><div className="w-6 h-6 rounded-full border-2 border-orange-500 border-t-transparent animate-spin"/></div>
           ) : categories.length === 0 ? (
             <div className="text-center py-10 text-white/40 text-sm">Нет категорий. Создайте первую ниже.</div>

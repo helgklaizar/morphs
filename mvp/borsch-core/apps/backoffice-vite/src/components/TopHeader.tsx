@@ -1,7 +1,7 @@
 "use client";
 
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, CreditCard, ChefHat } from "lucide-react";
+import { LayoutDashboard, CreditCard, ChefHat, Users } from "lucide-react";
 import { useThemeStore } from "@rms/core";
 import { OrderNavBadge } from "@/components/OrderNavBadge";
 import { StoreStatusControls } from "@/components/StoreStatusControls";
@@ -24,8 +24,10 @@ export function TopHeader() {
       {/* Navigation section */}
       <div className="flex items-center gap-6 shrink-0">
         
-        {/* Primary/First button: Orders */}
-        <OrderNavBadge />
+        <div className="flex items-center gap-2">
+          {/* Primary/First button: Orders */}
+          <OrderNavBadge />
+        </div>
 
         {/* Secondary grouped buttons */}
         <div className="flex items-center gap-2">
@@ -45,6 +47,8 @@ export function TopHeader() {
             <span className="hidden md:inline">Меню</span>
           </Link>
 
+
+
           <Link to="/dashboard" 
             className={getNavBtnClass(pathname === '/dashboard')}
             style={{ backgroundColor: pathname === '/dashboard' ? colors.dashboard : 'transparent' }}
@@ -59,6 +63,7 @@ export function TopHeader() {
       <div className="flex items-center shrink-0">
         <StoreStatusControls />
       </div>
+
       
     </header>
   );

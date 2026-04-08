@@ -51,12 +51,13 @@ export default function Header({
           <MapPin className="w-[16px] h-[16px] text-white/90" />
         </a>
         
-        <div title={t("delivery", "Доставка")} className={`flex items-center justify-center h-[36px] w-[36px] rounded-xl bg-[#1c1c1e]/80 backdrop-blur-md transition-all hover:bg-white/10 cursor-help border ${landingSettings?.is_delivery_enabled ? "border-[#00C853]/50 text-[#00C853]" : "border-red-500/50 text-red-500"}`}>
+        <div title={t("delivery", "Доставка")} className={`flex items-center justify-center h-[36px] w-[36px] rounded-xl bg-[#1c1c1e]/80 backdrop-blur-md transition-all hover:bg-white/10 cursor-help border ${landingSettings?.is_delivery_enabled !== false ? "border-[#00C853]/50 text-[#00C853]" : "border-red-500/50 text-red-500"}`}>
           <Truck className="w-[16px] h-[16px]" />
         </div>
-        <div title={t("pickup", "Самовывоз")} className={`flex items-center justify-center h-[36px] w-[36px] rounded-xl bg-[#1c1c1e]/80 backdrop-blur-md transition-all hover:bg-white/10 cursor-help border ${landingSettings?.is_pickup_enabled ? "border-[#00C853]/50 text-[#00C853]" : "border-red-500/50 text-red-500"}`}>
+        <div title={t("pickup", "Самовывоз")} className={`flex items-center justify-center h-[36px] w-[36px] rounded-xl bg-[#1c1c1e]/80 backdrop-blur-md transition-all hover:bg-white/10 cursor-help border ${landingSettings?.is_pickup_enabled !== false ? "border-[#00C853]/50 text-[#00C853]" : "border-red-500/50 text-red-500"}`}>
           <ShoppingBag className="w-[16px] h-[16px]" />
         </div>
+
 
         <button 
           onClick={() => setShowLanguageModal(true)}

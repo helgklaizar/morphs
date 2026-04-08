@@ -2,7 +2,8 @@ import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as menuApi from './menu.api';
 import { MenuItem } from '@rms/types';
-import { pb } from '@rms/db-local';
+import { SSE_URL } from '../../config';
+
 
 
 export const useCategoriesQuery = () => {
@@ -55,9 +56,10 @@ export const useMenuSubscriptions = () => {
     const queryClient = useQueryClient();
     
     useEffect(() => {
-        const eventSource = new EventSource('http://localhost:3002/api/events');
+        const eventSource = new EventSource(SSE_URL);
 
         eventSource.addEventListener('menu-updated', () => {
+
             queryClient.invalidateQueries({ queryKey: ['menu_items'] });
             queryClient.invalidateQueries({ queryKey: ['menu_categories'] });
         });

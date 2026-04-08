@@ -6,18 +6,18 @@ export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
 
 export default async function SubscriptionPage() {
-  const pbUrl = process.env.NEXT_PUBLIC_PB_URL || process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://127.0.0.1:8090';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
 
-  interface MenuItem { id: string; name: string; price: number; image_url?: string; }
+  interface MenuItem { id: string; name: string; price: number; image_url?: string; imageUrl?: string; isActive?: boolean; is_active?: boolean; }
   let menuItems: MenuItem[] = [];
   try {
-    const res = await fetch(`${pbUrl}/api/collections/menu_items/records?filter=(is_active=1)&sort=name&perPage=500`, { cache: 'no-store' });
+    const res = await fetch(`${apiUrl}/menu`, { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
-      menuItems = data.items || [];
+      menuItems = data.filter((i: any) => i.isActive !== false && i.is_active !== false);
     }
   } catch (e) {
-    console.error("Pocketbase fetch error", e);
+    console.error("API fetch error", e);
   }
 
   // We will build the client component separately to handle the complex state.

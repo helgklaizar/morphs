@@ -7,6 +7,14 @@ import ProtectedLayout from './layouts/ProtectedLayout';
 import PosPage from './pages/pos';
 import OrdersPage from './pages/orders';
 import { RealtimeProvider } from '@rms/core';
+import DashboardPage from './pages/dashboard';
+import InventoryPage from './pages/inventory';
+import RecipesPage from './pages/recipes';
+import PurchasesPage from './pages/purchases';
+import SettingsPage from './pages/settings';
+import OrdersHistoryPage from './pages/orders-history';
+import ClientsPage from './pages/clients';
+
 
 const queryClient = new QueryClient();
 
@@ -21,7 +29,15 @@ function App() {
               <Route path="/menu" element={<MenuPage />} />
               <Route path="/pos" element={<PosPage />} />
               <Route path="/orders" element={<OrdersPage />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/recipes" element={<RecipesPage />} />
+              <Route path="/purchases" element={<PurchasesPage />} />
+               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/orders-history" element={<OrdersHistoryPage />} />
+              <Route path="/clients" element={<ClientsPage />} />
             </Route>
+
           </Routes>
         </div>
       </BrowserRouter>

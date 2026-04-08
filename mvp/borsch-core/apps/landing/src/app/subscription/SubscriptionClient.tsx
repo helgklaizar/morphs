@@ -136,12 +136,12 @@ export default function SubscriptionClient({ items }: { items: MenuItem[] }) {
     
     setIsSubmitting(true);
     setErrorMsg(null);
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
+
     try {
-      const pbUrl = process.env.NEXT_PUBLIC_PB_URL || process.env.NEXT_PUBLIC_POCKETBASE_URL || 'https://rms.shop';
       const formattedAddress = deliveryMethod === "delivery" ? address : "Самовывоз";
       const baseDisplayName = `${name} (Подписка - ${deliveryMethod === "delivery" ? "Доставка: " + formattedAddress : "Самовывоз"})`;
 
-      // Find days that actually have items
       const validDays = subscriptionDaysInfo.map((dayObj, idx) => {
         const daySelects = selections[idx] || {};
         let daySum = 0;
@@ -164,80 +164,67 @@ export default function SubscriptionClient({ items }: { items: MenuItem[] }) {
         const { dayObj, dayItems, daySum } = validDays[i];
         const dayDiscount = daySum * calcTotal.discount;
         const dayTotal = daySum - dayDiscount + deliveryPerDay;
-
-        // Custom display name includes day info
         const displayName = `${baseDisplayName} [День ${i+1} из ${validDays.length}]`;
         const isoDate = dayObj.date.toISOString();
 
-        const orderData = {
-          customer_name: displayName,
-          customer_phone: phone,
-          total_amount: Math.round(dayTotal),
-          status: "pending",
-          payment_method: payment,
-          reservation_date: isoDate,
-        };
+        // Build items array for Hono API (all items inline)
+        const orderItems: { menuItemId: string; menuItemName: string; quantity: number; priceAtTime: number }[] = [];
+        
+        for (const { item, qty } of dayItems) {
+          const finalPrice = item.price * (1 - calcTotal.discount);
+          orderItems.push({
+            menuItemId: item.id,
+            menuItemName: item.name,
+            quantity: qty,
+            priceAtTime: Math.round(finalPrice),
+          });
+        }
+        if (deliveryPerDay > 0) {
+          orderItems.push({ menuItemId: 'delivery', menuItemName: '🚚 Доставка (часть подписки)', quantity: 1, priceAtTime: Math.round(deliveryPerDay) });
+        }
+        if (breadRequired) {
+          orderItems.push({ menuItemId: 'bread', menuItemName: '🍞 Хлеб', quantity: 1, priceAtTime: 0 });
+        }
+        if (cutleryRequired) {
+          orderItems.push({ menuItemId: 'cutlery', menuItemName: '🍴 Приборы', quantity: 1, priceAtTime: 0 });
+        }
 
-        const orderRes = await fetch(`${pbUrl}/api/collections/orders/records`, {
-          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(orderData)
+        const orderRes = await fetch(`${apiUrl}/orders`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customerName: displayName,
+            customerPhone: phone,
+            totalAmount: Math.round(dayTotal),
+            status: "pending",
+            paymentMethod: payment,
+            reservationDate: isoDate,
+            items: orderItems,
+          }),
         });
         if (!orderRes.ok) throw new Error(await orderRes.text());
-        const order = await orderRes.json();
-
-        if (order?.id) {
-          // Items
-          for (const { item, qty } of dayItems) {
-            const finalPrice = item.price * (1 - calcTotal.discount); // Apply discount per item logically
-            await fetch(`${pbUrl}/api/collections/order_items/records`, { 
-              method: "POST", 
-              headers: { "Content-Type": "application/json" }, 
-              body: JSON.stringify({
-                order_id: order.id, menu_item_id: item.id, menu_item_name: item.name, quantity: qty, price_at_time: Math.round(finalPrice)
-              }) 
-            });
-          }
-
-          // Delivery / Bread / Cutlery
-          if (deliveryPerDay > 0) {
-            await fetch(`${pbUrl}/api/collections/order_items/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ order_id: order.id, menu_item_name: "🚚 Доставка (часть подписки)", quantity: 1, price_at_time: Math.round(deliveryPerDay) }) });
-          }
-          if (breadRequired) {
-            await fetch(`${pbUrl}/api/collections/order_items/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ order_id: order.id, menu_item_name: "🍞 Хлеб", quantity: 1, price_at_time: 0 }) });
-          }
-          if (cutleryRequired) {
-            await fetch(`${pbUrl}/api/collections/order_items/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ order_id: order.id, menu_item_name: "🍴 Приборы", quantity: 1, price_at_time: 0 }) });
-          }
-
-          // Telegram webhook
-          try {
-            await fetch(`${pbUrl}/api/webhooks/order_submit/${order.id}`, { method: "POST" });
-          } catch (e) {
-            console.error("Webhook error: ", e);
-          }
-        }
       }
 
       setIsSuccess(true);
       window.scrollTo(0, 0);
 
-      // Create/Update Client logic
+      // Upsert client
       try {
-        const clientQuery = await fetch(`${pbUrl}/api/collections/clients/records?filter=(phone='${encodeURIComponent(phone)}')`);
-        const clientData = clientQuery.ok ? await clientQuery.json() : null;
-        const existingClient = clientData?.items?.[0] || null;
-        const upsertData: Record<string, unknown> = { phone: phone, name: name };
-        if (deliveryMethod === "delivery" && formattedAddress) upsertData.address = formattedAddress;
-        
-        if (existingClient) {
-            await fetch(`${pbUrl}/api/collections/clients/records/${existingClient.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(upsertData) });
-        } else {
-            await fetch(`${pbUrl}/api/collections/clients/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(upsertData) });
-        }
+        const clientRes = await fetch(`${apiUrl}/clients/upsert`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone,
+            name,
+            address: deliveryMethod === "delivery" ? formattedAddress : undefined,
+          }),
+        });
+        if (!clientRes.ok) console.error("Client upsert failed");
       } catch (err) { console.error("Client upsert err:", err); }
 
     } catch (e: any) {
       console.error(e);
-      setErrorMsg(e?.message || (typeof e === 'string' ? e : "Ошибка: " + JSON.stringify(e)));
+      setErrorMsg(e?.message || "Ошибка при отправке заказа");
     } finally {
       setIsSubmitting(false);
     }

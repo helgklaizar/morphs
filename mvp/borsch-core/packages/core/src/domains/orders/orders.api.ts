@@ -1,6 +1,6 @@
 import { Order, OrderStatus } from '@rms/types';
+import { API_URL } from '../../config';
 
-const API_URL = 'http://localhost:3002/api';
 
 export const fetchOrders = async (): Promise<Order[]> => {
   const res = await fetch(`${API_URL}/orders`);

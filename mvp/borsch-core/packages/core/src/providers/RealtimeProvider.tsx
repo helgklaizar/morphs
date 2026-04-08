@@ -1,7 +1,7 @@
 "use client";
-
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { SSE_URL } from '../config';
 import { orderKeys } from '../domains/orders/orders.queries';
 
 export function RealtimeProvider() {
@@ -9,7 +9,8 @@ export function RealtimeProvider() {
 
   useEffect(() => {
     // Подключаемся к Hono SSE
-    const eventSource = new EventSource('http://localhost:3002/api/events');
+    const eventSource = new EventSource(SSE_URL);
+
 
     eventSource.addEventListener('order-created', (event) => {
       queryClient.invalidateQueries({ queryKey: orderKeys.list() });

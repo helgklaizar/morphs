@@ -58,6 +58,8 @@ model InventoryItem {
   stock       Float              @default(0)
   costPerUnit Float              @default(0)
   minStock    Float              @default(0)
+  categoryId  String?
+  category    InventoryCategory? @relation(fields: [categoryId], references: [id])
   recipes     RecipeIngredient[]
 }
 
@@ -146,7 +148,21 @@ model User {
 }
 
 model InventoryCategory {
-  id         String   @id @default(uuid())
+  id         String          @id @default(uuid())
   name       String
-  orderIndex Int      @default(0)
+  orderIndex Int             @default(0)
+  items      InventoryItem[]
+}
+
+model LandingSettings {
+  id                String   @id @default(uuid())
+  isPreorderMode    Boolean  @default(false)
+  isDeliveryEnabled Boolean  @default(true)
+  isPickupEnabled   Boolean  @default(true)
+  isTakingOrders    Boolean  @default(true)
+  heroTitle         String   @default("BORSCH")
+  heroSubtitle      String   @default("Домашняя кухня с доставкой")
+  contactPhone      String   @default("")
+  address           String   @default("")
+  updatedAt         DateTime @updatedAt
 }

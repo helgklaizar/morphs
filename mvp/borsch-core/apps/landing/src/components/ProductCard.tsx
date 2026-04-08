@@ -50,8 +50,8 @@ export default function ProductCard({
       {Boolean(item.is_poll) && <div className="absolute top-3 left-3 z-[25] text-[11px] font-bold uppercase tracking-wider bg-purple-500/90 backdrop-blur-md shadow-md text-white py-1 px-2.5 rounded-xl">{t("poll", "Опрос")}</div>}
 
       <div className="w-full aspect-[4/3] relative bg-zinc-800 shrink-0">
-        {(item.image_url || getFallbackImage(item.name)) ? (
-            <img src={item.image_url || getFallbackImage(item.name)} alt={item.name} className="w-full h-full object-cover" />
+        {((item as any).imageUrl || item.image_url || getFallbackImage(item.name)) ? (
+            <img src={(item as any).imageUrl || item.image_url || getFallbackImage(item.name)} alt={item.name} className="w-full h-full object-cover" />
         ) : (
             <div className="w-full h-full flex items-center justify-center relative">
               <span className="text-4xl opacity-40">🍽️</span>

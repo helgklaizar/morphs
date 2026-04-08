@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Plus, Minus, Search } from "lucide-react";
-import { useUpdateOrderMutation } from '@rms/core';
+import { useUpdateOrderMutation, parseCustomerData, formatCustomerName, updateOrderSchema } from '@rms/core';
+
 import type { Order, OrderItem } from '@rms/core';
 import { useMenuQuery } from '@rms/core';
 
@@ -29,54 +30,15 @@ export function OrderEditModal({ isOpen, onClose, order }: Props) {
 
   useEffect(() => {
     if (isOpen && order) {
-      if (order.customerName.includes("(Доставка:")) {
-        const parts = order.customerName.split("(Доставка:");
-        const fullAddress = (parts[1] || "").replace(")", "").trim();
-        
-        let foundCity = "Хайфа";
-        let restAddress = fullAddress;
-        
-        for (const c of ["Хайфа", "Нешер", "Тират Кармель", "Крайот"]) {
-           if (fullAddress.startsWith(c)) {
-              foundCity = c;
-              restAddress = fullAddress.replace(c, "").replace(/^,?\s*/, "").trim();
-              break;
-           }
-        }
-        
-        let parsedApt = "";
-        if (restAddress.includes(", apt. ")) {
-           const aptParts = restAddress.split(", apt. ");
-           parsedApt = aptParts.pop() || "";
-           restAddress = aptParts.join(", apt. ").trim();
-        } else if (restAddress.includes(", кв. ")) {
-           const aptParts = restAddress.split(", кв. ");
-           parsedApt = aptParts.pop() || "";
-           restAddress = aptParts.join(", кв. ").trim();
-        }
-        
-        const words = restAddress.split(" ");
-        let parsedHouse = "";
-        let parsedStreet = restAddress;
-        if (words.length > 1) {
-           parsedHouse = words.pop() || "";
-           parsedStreet = words.join(" ").trim();
-        }
-        
-        setName(parts[0].trim());
-        setCity(foundCity);
-        setStreet(parsedStreet);
-        setHouse(parsedHouse);
-        setApt(parsedApt);
-        setIsDelivery(true);
-      } else {
-        setName(order.customerName);
-        setCity("Хайфа");
-        setStreet("");
-        setHouse("");
-        setApt("");
-        setIsDelivery(false);
-      }
+      const parsed = parseCustomerData(order.customerName);
+      
+      setName(parsed.cleanName);
+      setCity(parsed.city);
+      setStreet(parsed.street);
+      setHouse(parsed.house);
+      setApt(parsed.apt);
+      setIsDelivery(parsed.isDelivery);
+
       setPhone(order.customerPhone || "");
       setPayment(order.paymentMethod || "cash");
       // deep copy
@@ -99,12 +61,11 @@ export function OrderEditModal({ isOpen, onClose, order }: Props) {
     }
   }, [isOpen, order]);
 
-  if (!isOpen || order === null) return null; // Added check for order to satisfy TS
+  if (!isOpen || order === null) return null; 
+
 
   const handleSave = async () => {
-    const joinedAddress = `${street.trim()} ${house.trim()}${apt.trim() ? ', apt. ' + apt.trim() : ''}`.trim();
-    const finalAddress = `${city}${joinedAddress ? ', ' + joinedAddress : ''}`;
-    const finalName = isDelivery ? `${(name || "").trim()} (Доставка: ${finalAddress})` : (name || "").trim();
+    const finalName = formatCustomerName(name, { city, street, house, apt, isDelivery });
     const newTotal = items.reduce((sum, item) => sum + (item.priceAtTime || item.price || 0) * item.quantity, 0);
 
     let finalReservationDate: string | undefined = undefined;
@@ -119,61 +80,36 @@ export function OrderEditModal({ isOpen, onClose, order }: Props) {
       }
     }
 
-    // === UPDATE ORDER ITEMS ===
-    try {
-      const pbUrl = process.env.NEXT_PUBLIC_PB_URL || 'https://borsch.shop';
-      const originalItemIds = order.items.map(i => i.id);
-      const currentItemIds = items.map(i => i.id);
+    const payload = {
+      customerName: finalName,
+      customerPhone: (phone || "").trim(),
+      paymentMethod: payment,
+      totalAmount: newTotal,
+      reservationDate: finalReservationDate,
+      items: items.map(i => ({
+        menuItemId: i.menuItemId,
+        menuItemName: i.menuItemName,
+        quantity: i.quantity,
+        priceAtTime: i.priceAtTime || i.price || 0
+      }))
+    };
 
-      // Delete removed
-      for (const id of originalItemIds) {
-        if (!currentItemIds.includes(id)) {
-          await fetch(`${pbUrl}/api/collections/order_items/records/${id}`, { method: "DELETE" });
-        }
-      }
-
-      // Add or Update
-      for (const item of items) {
-        if (!originalItemIds.includes(item.id)) {
-          // New
-          const newItem: Record<string, any> = {
-             order_id: order.id,
-             menu_item_id: item.menuItemId,
-             menu_item_name: item.menuItemName,
-             quantity: item.quantity,
-             price_at_time: item.priceAtTime || item.price || 0
-          };
-          if (!newItem.menu_item_id) delete newItem.menu_item_id;
-          await fetch(`${pbUrl}/api/collections/order_items/records`, { 
-             method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newItem) 
-          });
-        } else {
-          // Update
-          const orig = order.items.find(i => i.id === item.id);
-          if (orig && orig.quantity !== item.quantity) {
-             await fetch(`${pbUrl}/api/collections/order_items/records/${item.id}`, { 
-                method: "PATCH", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ quantity: item.quantity }) 
-             });
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Failed to update items", e);
+    // UI-level validation using shared schema
+    const validation = updateOrderSchema.safeParse(payload);
+    if (!validation.success) {
+      console.error("Validation failed:", validation.error.format());
+      alert("Ошибка валидации: " + JSON.stringify(validation.error.format()));
+      return;
     }
 
-    // === UPDATE ORDER RECORD ===
     updateOrderMutation.mutate({
       id: order.id,
-      payload: {
-        customer_name: finalName,
-        customer_phone: (phone || "").trim(),
-        payment_method: payment,
-        total_amount: newTotal,
-        reservation_date: finalReservationDate,
-      } as any
+      payload: validation.data as any
     });
     onClose();
   };
+
+
 
   const updateQuantity = (index: number, delta: number) => {
     const newItems = [...items];

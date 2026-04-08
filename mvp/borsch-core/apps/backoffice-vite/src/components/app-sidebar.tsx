@@ -44,7 +44,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger 
 } from "@/components/ui/collapsible";
-import { pb } from "@/lib/pb";
+
 import { useModulesStore } from '@rms/core';
 import type { SystemModuleId } from '@rms/core';
 import {
@@ -110,10 +110,7 @@ export function AppSidebar() {
     localStorage.setItem("system_zoom", newZoom.toString());
   };
 
-  const handleLogout = async () => {
-    pb.authStore.clear();
-    router.replace("/login");
-  };
+
 
   const { isModuleEnabled } = useModulesStore();
 
@@ -206,7 +203,7 @@ export function AppSidebar() {
           </div>
 
           <button 
-            onClick={handleLogout}
+            onClick={() => window.location.href = '/login'}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 transition-colors border border-red-500/20"
           >
             <LogOut className="w-5 h-5" />

@@ -46,7 +46,8 @@ export default function CartSheet({ landingSettings }: { landingSettings?: Recor
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const forceTomorrow = landingSettings?.is_only_preorder || (!landingSettings?.is_delivery_enabled && !landingSettings?.is_pickup_enabled);
+  const forceTomorrow = landingSettings?.is_preorder_mode || 
+    (landingSettings?.is_delivery_enabled === false && landingSettings?.is_pickup_enabled === false);
 
   useEffect(() => {
     if (forceTomorrow && reservationDateOffset === 0) setReservationDateOffset(1);
@@ -72,13 +73,14 @@ export default function CartSheet({ landingSettings }: { landingSettings?: Recor
 
   useEffect(() => {
     if (landingSettings) {
-      if (!landingSettings.is_delivery_enabled && landingSettings.is_pickup_enabled && type === "delivery") {
+      if (landingSettings.is_delivery_enabled === false && landingSettings.is_pickup_enabled !== false && type === "delivery") {
         setType("pickup");
-      } else if (landingSettings.is_delivery_enabled && !landingSettings.is_pickup_enabled && type === "pickup") {
+      } else if (landingSettings.is_delivery_enabled !== false && landingSettings.is_pickup_enabled === false && type === "pickup") {
         setType("delivery");
       }
     }
   }, [landingSettings, type]);
+
 
   const [timeSlot, setTimeSlot] = useState("");
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -353,18 +355,19 @@ export default function CartSheet({ landingSettings }: { landingSettings?: Recor
                 {/* Options Delivery/Pickup */}
                 {!tableNum && (
                   <div className="flex gap-2">
-                    {Boolean(landingSettings?.is_delivery_enabled) && (
+                    {landingSettings?.is_delivery_enabled !== false && (
                       <button type="button" onClick={() => setType("delivery")} className={`flex-1 py-2.5 text-sm font-bold rounded-2xl border transition ${type === "delivery" ? "bg-brand/10 text-brand border-brand/50" : "bg-white/5 border-transparent text-neutral-400"}`}>
                         {t('delivery', 'Доставка')}
                       </button>
                     )}
-                    {Boolean(landingSettings?.is_pickup_enabled) && (
+                    {landingSettings?.is_pickup_enabled !== false && (
                       <button type="button" onClick={() => setType("pickup")} className={`flex-1 py-2.5 text-sm font-bold rounded-2xl border transition ${type === "pickup" ? "bg-brand/10 text-brand border-brand/50" : "bg-white/5 border-transparent text-neutral-400"}`}>
                         {t('pickup', 'Самовывоз')} (0 ₪)
                       </button>
                     )}
                   </div>
                 )}
+
 
                 <form onSubmit={handleCheckout} className="space-y-3">
                   <div className="flex flex-col gap-2.5 pb-2">

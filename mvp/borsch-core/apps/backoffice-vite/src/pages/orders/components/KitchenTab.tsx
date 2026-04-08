@@ -191,6 +191,7 @@ function OrderCard({
 export function KitchenTab() {
   const { data: orders = [] } = useOrdersQuery();
   const { data: menuItems = [] } = useMenuQuery();
+  const [activeTab, setActiveTab] = useState("all");
   useEffect(() => {
   }, []);
 

@@ -99,8 +99,8 @@ export function MenuSharedHeader({ filterPolls, onFilterPollsChange }: MenuHeade
         </div>
       </div>
 
-      <MenuItemModal isOpen={isItemModalOpen} onClose={() => setIsItemModalOpen(false)} item={null} />
-      <MenuCategoriesModal isOpen={isCategoryModalOpen} onClose={() => setIsCategoryModalOpen(false)} />
+      {isItemModalOpen && <MenuItemModal isOpen={isItemModalOpen} onClose={() => setIsItemModalOpen(false)} item={null} />}
+      {isCategoryModalOpen && <MenuCategoriesModal isOpen={isCategoryModalOpen} onClose={() => setIsCategoryModalOpen(false)} />}
     </>
   );
 }

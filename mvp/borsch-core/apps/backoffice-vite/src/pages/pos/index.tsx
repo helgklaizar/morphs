@@ -293,10 +293,6 @@ export default function CheckoutPage() {
                               </span>
                             )}
                           </div>
-                          
-                          <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/50 group-hover:bg-orange-500 group-hover:text-white transition-all transform group-hover:rotate-90">
-                            <PlusCircle className="w-4 h-4" />
-                          </div>
                         </div>
                       </div>
                     </motion.button>
@@ -470,25 +466,6 @@ export default function CheckoutPage() {
                     className="col-span-1 min-w-0 w-full bg-orange-500/10 border border-orange-500/30 rounded-xl py-3 px-3 text-sm focus:outline-none focus:border-orange-500 transition-colors placeholder:text-orange-500/40 text-orange-100 text-center"
                   />
                 </div>
-              </div>
-            )}
-
-            {orderType === 'dine_in' && (
-              <div className="relative animate-in fade-in slide-in-from-top-2">
-                <select
-                  value={selectedTableId || ""}
-                  onChange={(e) => setSelectedTableId(e.target.value)}
-                  className="w-full bg-[#141414] border border-white/5 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-orange-500 transition-colors text-white appearance-none"
-                >
-                  <option value="" disabled>
-                    {tables.length === 0 ? "⚠️ Сначала создайте столы в меню Зал" : "Выберите стол..."}
-                  </option>
-                  {tables.map(t => (
-                    <option key={t.id} value={t.id}>
-                      Стол №{t.number} ({t.seats} мест)
-                    </option>
-                  ))}
-                </select>
               </div>
             )}
 
