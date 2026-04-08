@@ -12,8 +12,7 @@ export const metadata: Metadata = {
   title: "Борщ Shop | Вкусная домашняя еда | Доставка на неделю",
   description: "Доставка премиальной домашней еды прямо к вашей двери. Свежий борщ, котлеты, и другое меню на каждый день.",
 };
-
-import { QueryProvider } from "@rms/core";
+import { QueryProvider } from "@/components/QueryProvider";
 
 export default function RootLayout({
   children,
