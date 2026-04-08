@@ -9,32 +9,9 @@ import { useCartStore } from "@/store/useCartStore";
 import CartSheet from "@/components/CartSheet";
 import { useLocaleStore, translate, LOCAL_TRANSLATIONS, Locale } from "@/store/localeStore";
 
-// Steam Animation
-const SteamAnimation = () => {
-  return (
-    <div className="absolute left-[50%] top-[40%] -translate-x-[50%] -translate-y-[50%] flex gap-2 sm:gap-4 pointer-events-none z-40 w-full justify-center">
-      {[1, 2, 3].map((i) => (
-        <motion.div
-           key={i}
-           className="w-16 sm:w-20 h-28 sm:h-40 bg-white/70 blur-[10px] sm:blur-[14px] rounded-full mix-blend-screen"
-           animate={{
-             y: [0, -140],
-             x: i === 1 ? [0, -40, 15, -25] : i === 2 ? [0, 25, -25, 20] : [0, -20, 30, -25],
-             opacity: [0, 0.95, 0],
-             scale: [1, 3.5]
-           }}
-           transition={{
-             duration: 3.5 + i * 0.5,
-             repeat: Infinity,
-             ease: "easeInOut",
-             delay: i * 0.4,
-           }}
-        />
-      ))}
-    </div>
-  )
-}
-
+import Header from "./Header";
+import Hero from "./Hero";
+import ProductCard from "./ProductCard";
 interface MenuItem { id: string; name: string; name_en?: string; name_he?: string; name_uk?: string; price: number; is_poll?: boolean; category_id?: string; description?: string; description_en?: string; description_he?: string; description_uk?: string; stock: number; image_url?: string; composition?: string; }
 interface Category { id: string; name: string; name_en?: string; name_he?: string; name_uk?: string; }
 interface LandingSettingsType { is_preorder_mode?: boolean; is_delivery_enabled?: boolean; is_pickup_enabled?: boolean; hero_title?: string; hero_title_en?: string; hero_title_he?: string; hero_title_uk?: string; contact_phone?: string; address?: string; is_taking_orders?: boolean; hero_subtitle?: string; hero_subtitle_en?: string; hero_subtitle_he?: string; hero_subtitle_uk?: string; about_text?: string; about_text_en?: string; about_text_he?: string; about_text_uk?: string; show_loyalty_block?: boolean; show_promo_block?: boolean; }
@@ -133,59 +110,7 @@ export default function LandingClient({ menuItems, landingSettings, categories, 
   return (
     <main className="min-h-screen w-full relative overflow-clip pb-32 bg-zinc-950 font-inter text-white">
 
-      {/* Unified Fixed Header */}
-      <header 
-        className="fixed top-0 inset-x-0 z-[60] px-4 sm:px-6 py-3 flex items-start justify-between transition-colors duration-300 pointer-events-none"
-        style={{ backgroundColor: scrollY > 50 ? "rgba(9,9,11,0.95)" : "transparent", backdropFilter: scrollY > 50 ? "blur(12px)" : "none", borderBottom: scrollY > 50 ? "1px solid rgba(255,255,255,0.05)" : "none" }}
-      >
-        {/* Left: Logo */}
-        <div 
-          className="flex items-center transition-opacity duration-200 pointer-events-auto mt-1"
-          style={{ opacity: scrollY > 100 ? 1 : 0, pointerEvents: scrollY > 100 ? "auto" : "none" }}
-        >
-          <div className="w-[30px] h-[30px] rounded-xl overflow-hidden mr-3 shrink-0 bg-[#ff6b00]/20 border border-[#ff6b00]/50 flex items-center justify-center">
-            <span className="font-outfit font-black text-[#ff6b00] text-[14px]">B.</span>
-          </div>
-          <span className="font-outfit font-black text-[18px] tracking-tight">
-            {translate(locale, landingSettings?.hero_title || "RMS AI OS", landingSettings?.hero_title_en, landingSettings?.hero_title_he, landingSettings?.hero_title_uk)}
-          </span>
-        </div>
-
-        {/* Right: Actions */}
-        <div className="flex items-center gap-2 pointer-events-auto mt-1">
-          <a 
-            href={`tel:${landingSettings?.contact_phone?.replace(/\D/g, '') || "0549587707"}`}
-            title={t("call_us", "Позвонить")}
-            className="flex items-center justify-center h-[36px] w-[36px] rounded-xl bg-[#1c1c1e]/80 backdrop-blur-md border border-white/10 active:scale-95 transition-all hover:bg-white/10 hover:border-white/20 cursor-pointer"
-          >
-            <Phone className="w-[16px] h-[16px] text-white/90" />
-          </a>
-          <a 
-            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(landingSettings?.address || "Ha-Ne'emanim St 15, Haifa")}`}
-            target="_blank"
-            title={t("our_address", "Наш адрес")}
-            className="flex items-center justify-center h-[36px] w-[36px] rounded-xl bg-[#1c1c1e]/80 backdrop-blur-md border border-white/10 active:scale-95 transition-all hover:bg-white/10 hover:border-white/20 cursor-pointer"
-          >
-            <MapPin className="w-[16px] h-[16px] text-white/90" />
-          </a>
-          
-          <div title={t("delivery", "Доставка")} className={`flex items-center justify-center h-[36px] w-[36px] rounded-xl bg-[#1c1c1e]/80 backdrop-blur-md transition-all hover:bg-white/10 cursor-help border ${landingSettings?.is_delivery_enabled ? "border-[#00C853]/50 text-[#00C853]" : "border-red-500/50 text-red-500"}`}>
-            <Truck className="w-[16px] h-[16px]" />
-          </div>
-          <div title={t("pickup", "Самовывоз")} className={`flex items-center justify-center h-[36px] w-[36px] rounded-xl bg-[#1c1c1e]/80 backdrop-blur-md transition-all hover:bg-white/10 cursor-help border ${landingSettings?.is_pickup_enabled ? "border-[#00C853]/50 text-[#00C853]" : "border-red-500/50 text-red-500"}`}>
-            <ShoppingBag className="w-[16px] h-[16px]" />
-          </div>
-
-          <button 
-            onClick={() => setShowLanguageModal(true)}
-            className="flex items-center justify-center bg-[#1c1c1e]/80 backdrop-blur-md border border-white/10 px-2.5 h-[36px] rounded-xl active:scale-95 transition-all hover:bg-white/10 hover:border-white/20"
-          >
-            <span className="text-[14px] leading-none mt-[1px]">
-              {locale === 'ru' ? '🇷🇺' : locale === 'he' ? '🇮🇱' : locale === 'uk' ? '🇺🇦' : '🇺🇸'}
-            </span>
-          </button>
-        </div>
-      </header>
+      <Header scrollY={scrollY} landingSettings={landingSettings} setShowLanguageModal={setShowLanguageModal} />
       
       {/* Table Badge */}
       <AnimatePresence>
@@ -227,49 +152,7 @@ export default function LandingClient({ menuItems, landingSettings, categories, 
         )}
       </AnimatePresence>
 
-      {/* Immersive Hero Background - RMS Premium Classic */}
-      <div className="relative w-full flex flex-col min-h-[500px] sm:min-h-[600px] bg-[#09090b] overflow-hidden">
-        {/* Top Image Section with subtle parallax */}
-        <motion.div style={{ y: heroY }} className="absolute inset-x-0 top-0 h-[75%] sm:h-[80%] z-0">
-          <Image src="/assets/images/black-hero.jpg" alt="Background" width={1200} height={800} className="w-full h-full object-cover select-none scale-[1.15]" priority />
-          <SteamAnimation />
-        </motion.div>
-
-        {/* Gradient fades image into black background */}
-        <div className="absolute inset-x-0 bottom-0 h-[60%] bg-gradient-to-t from-[#09090b] via-[#09090b]/90 to-transparent pointer-events-none z-0" />
-        {/* Overlay on top */}
-        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#09090b]/80 to-transparent pointer-events-none z-0" />
-
-        {/* Bottom Editorial Text Section */}
-        <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-end flex-1 pt-[65%] sm:pt-[400px]">
-          <div className="px-4 sm:px-6 md:px-12 pb-6 sm:pb-8 w-full flex flex-col items-start text-left">
-            
-            {landingSettings?.is_taking_orders === false && (
-               <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-lg bg-red-500/10 text-red-500 border border-red-500/20 py-3 px-6 rounded-2xl mb-6 flex items-center gap-3 font-semibold relative z-20">
-                 <Info size={18} /> {t('closed', 'К сожалению, мы сейчас не принимаем заказы.')}
-               </motion.div>
-            )}
-
-            <h1 className="text-[48px] sm:text-[64px] lg:text-[88px] font-outfit font-black tracking-tighter leading-[0.95] text-transparent bg-clip-text bg-gradient-to-br from-white via-[#EFEFEF] to-[#777] mb-6 drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)] pr-4 max-w-4xl">
-              {translate(locale, landingSettings?.hero_title || "RMS be Shhuna", landingSettings?.hero_title_en, landingSettings?.hero_title_he, landingSettings?.hero_title_uk)}
-            </h1>
-
-            {/* Hero Text Layout */}
-            <div className="flex flex-col gap-6 w-full max-w-2xl mt-4">
-              <div className="flex flex-col w-full">
-                <div className="w-12 h-[4px] rounded-xl bg-gradient-to-r from-[#ff6b00] to-[#ff8c38] mb-4 shadow-[0_0_12px_rgba(255,107,0,0.5)]" />
-                <p className="text-[#ff6b00] text-[15px] sm:text-[16px] font-[800] tracking-[0.1em] uppercase m-0 leading-snug drop-shadow-md">
-                  {translate(locale, landingSettings?.hero_subtitle || "Вкусная домашняя кухня", landingSettings?.hero_subtitle_en, landingSettings?.hero_subtitle_he, landingSettings?.hero_subtitle_uk)}
-                </p>
-              </div>
-
-              <p className="text-white/90 text-[15px] sm:text-[16px] leading-[1.6] font-medium m-0 whitespace-pre-line drop-shadow-lg">
-                {translate(locale, landingSettings?.about_text || "Мы тут на районе наварили шикарного домашнего борща и приглашаем всех желающих вкусно и сытно откушать!\n\nГотовили с душой, как для себя! Порции наливаем от души, идеально, чтобы плотно пообедать.", landingSettings?.about_text_en, landingSettings?.about_text_he, landingSettings?.about_text_uk)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Hero heroY={heroY} landingSettings={landingSettings} />
 
       {/* Sticky Header: Subscription Banner + Categories */}
       <section className="sticky top-[60px] z-[50] py-4 sm:py-5 bg-[#09090b]/95 backdrop-blur-2xl border-b border-white/5 shadow-2xl">
@@ -372,135 +255,19 @@ export default function LandingClient({ menuItems, landingSettings, categories, 
                  const isOutOfStock = (item.stock === 0 && !item.is_poll && !forceTomorrow && reservationDateOffset === 0);
                  const canOrder = landingSettings?.is_taking_orders !== false;
                  return (
-                  <motion.div 
-                    layout
+                  <ProductCard 
                     key={item.id}
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.3, type: "spring", bounce: 0.4 }}
-                    className={`bg-[#1c1c1e] border-none rounded-2xl overflow-hidden relative group flex flex-col w-full`}
-                  >
-                    
-                    {/* Share Button Overlay */}
-                    <button onClick={() => handleShare(item)} className="absolute top-3 right-3 w-7 h-7 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center z-[25] backdrop-blur-sm transition-all cursor-pointer group/share pointer-events-auto">
-                      <Share2 size={13} className="text-white/80 group-hover/share:text-white" />
-                    </button>
-
-                    {/* Left badges */}
-                    {isOutOfStock && <div className="absolute top-3 left-3 z-[25] text-[11px] font-bold bg-red-500/90 backdrop-blur-md shadow-md text-white py-1 px-2.5 rounded-xl">{t("out_of_stock", "Закончилось")}</div>}
-                    {Boolean(item.is_poll) && <div className="absolute top-3 left-3 z-[25] text-[11px] font-bold uppercase tracking-wider bg-purple-500/90 backdrop-blur-md shadow-md text-white py-1 px-2.5 rounded-xl">{t("poll", "Опрос")}</div>}
-
-                    {/* Image Header - Edge to Edge */}
-                    <div className="w-full aspect-[4/3] relative bg-zinc-800 shrink-0">
-                      {(item.image_url || getFallbackImage(item.name)) ? (
-                          <img src={item.image_url || getFallbackImage(item.name)} alt={item.name} className="w-full h-full object-cover" />
-                      ) : (
-                          <div className="w-full h-full flex items-center justify-center relative">
-                            <span className="text-4xl opacity-40">🍽️</span>
-                          </div>
-                      )}
-                      
-                      {/* Price Badge Over Image (Bottom Left) */}
-                      {!item.is_poll && (
-                        <div className="absolute bottom-2 left-2 z-[20] flex items-center">
-                          <span className="font-outfit font-black text-[14px] text-[#ff6b00] tracking-wide drop-shadow bg-[#2a1708]/90 px-3 py-1 rounded-lg flex items-center gap-1 shadow-sm border border-[#ff6b00]/20">
-                            {item.price} <span className="text-[11px]">₪</span>
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Content Section */}
-                    <div className="flex flex-col flex-1 px-3 pt-3 pb-3 z-20 relative">
-                       <h3 className="font-outfit font-bold text-[15px] text-white leading-tight mb-1.5">
-                         {translate(locale, item.name, item.name_en, item.name_he, item.name_uk)}
-                       </h3>
-                       {item.description && (
-                          <p className="text-[#8e8e93] text-[12px] leading-[1.3] line-clamp-3 mb-2">
-                            {translate(locale, item.description, item.description_en, item.description_he, item.description_uk)}
-                          </p>
-                       )}
-                       {item.composition && (
-                          <p className="text-zinc-500 text-[11px] mb-4 line-clamp-2">
-                            <span className="font-semibold">{t("composition", "Состав:")} </span> 
-                            {item.composition}
-                          </p>
-                       )}
-                       
-                       <div className="flex-1" />
-                       
-                       {/* Add to Cart Actions */}
-                       <div className="mt-auto">
-                        {item.is_poll ? (
-                          <button className="w-full py-3 sm:py-2.5 rounded-xl border border-purple-500/30 bg-purple-600/90 hover:bg-purple-600 text-white text-[13px] sm:text-[14px] font-bold text-center active:scale-95 transition-all shadow-md shadow-purple-600/20">
-                            {t("want_in_menu_btn", "Хочу в меню!")}
-                          </button>
-                        ) : !canOrder ? (
-                          <button disabled className="bg-white/5 text-white/30 px-6 py-3 sm:py-2.5 rounded-xl w-full font-bold cursor-not-allowed text-[13px] sm:text-[14px]">
-                            {t('closed', 'Закрыто')}
-                          </button>
-                        ) : (
-                          (() => {
-                            const cartItem = cartItems.find(i => i.id === item.id);
-                            const quantity = cartItem?.quantity || 0;
-                            
-                            if (quantity > 0) {
-                              return (
-                                <div className="flex overflow-hidden bg-[#141414] border border-white/10 rounded-xl h-[42px] sm:h-[40px] shadow-sm">
-                                  <button 
-                                    onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
-                                    className="w-[50px] shrink-0 bg-transparent hover:bg-white/5 text-white flex items-center justify-center font-bold text-[18px] transition-colors"
-                                  >
-                                    −
-                                  </button>
-                                  <div className="flex-1 flex items-center justify-center text-[13px] sm:text-[14px] font-bold text-white">
-                                    {quantity} {t("pieces_short", "шт")}
-                                  </div>
-                                  <button 
-                                    disabled={isOutOfStock}
-                                    onClick={(e) => { 
-                                      e.stopPropagation(); 
-                                      addItem({
-                                        id: item.id,
-                                        name: translate(locale, item.name, item.name_en, item.name_he, item.name_uk),
-                                        price: item.price,
-                                        image_url: item.image_url || getFallbackImage(item.name),
-                                        stock: (forceTomorrow || reservationDateOffset > 0) ? 999 : item.stock,
-                                        is_poll: item.is_poll,
-                                        quantity: 1
-                                      }); 
-                                    }}
-                                    className={`w-[50px] shrink-0 flex items-center justify-center font-bold text-[18px] transition-colors ${isOutOfStock ? "bg-red-500/10 text-red-500/50 cursor-not-allowed" : "bg-gradient-to-r from-[#ff6b00] to-[#ff8c38] hover:brightness-110 text-white shadow-lg shadow-[#ff6b00]/30 border-l border-[#ff6b00]/20"}`}
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              );
-                            }
-                            
-                            return (
-                              <button 
-                                disabled={isOutOfStock}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  addItem({
-                                    id: item.id,
-                                    name: translate(locale, item.name, item.name_en, item.name_he, item.name_uk),
-                                    price: item.price,
-                                    image_url: item.image_url || getFallbackImage(item.name),
-                                    stock: (forceTomorrow || reservationDateOffset > 0) ? 999 : item.stock,
-                                    is_poll: item.is_poll,
-                                    quantity: 1
-                                  });
-                                }}
-                                className={`w-full py-3 sm:py-2.5 rounded-xl font-bold text-[13px] sm:text-[14px] flex items-center justify-center transition-all active:scale-95 border ${isOutOfStock ? "bg-red-500/10 border-red-500/20 text-red-500/50 cursor-not-allowed" : "bg-gradient-to-r from-[#ff6b00] to-[#ff8c38] shadow-md shadow-[#ff6b00]/30 hover:brightness-110 text-white border-[#ff6b00]/20"}`}
-                              >
-                                {isOutOfStock ? t("out_of_stock_btn", "Нет в наличии") : `+ ${t("add_to_cart", "В корзину")}`}
-                              </button>
-                            );
-                          })()
-                        )}
-                       </div>
-                    </div>
-                  </motion.div>
+                    item={item}
+                    isOutOfStock={isOutOfStock}
+                    canOrder={canOrder}
+                    forceTomorrow={forceTomorrow}
+                    reservationDateOffset={reservationDateOffset}
+                    cartItems={cartItems}
+                    addItem={addItem}
+                    removeItem={removeItem}
+                    handleShare={handleShare}
+                    getFallbackImage={getFallbackImage}
+                  />
                  )
               })}
             </AnimatePresence>

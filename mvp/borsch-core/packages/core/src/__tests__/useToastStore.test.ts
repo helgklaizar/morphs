@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { act } from 'react';
-import { useToastStore } from '../store/useToastStore';
+import { useToastStore } from '../system/useToastStore';
 
 describe('useToastStore', () => {
   beforeEach(() => {

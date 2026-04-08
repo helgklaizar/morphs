@@ -173,7 +173,7 @@ export default function CartSheet({ landingSettings }: { landingSettings?: Recor
     const searchParams = new URLSearchParams(window.location.search);
     const tableNum = searchParams.get('table');
 
-    const pbUrl = process.env.NEXT_PUBLIC_PB_URL || process.env.NEXT_PUBLIC_POCKETBASE_URL || 'https://rms.shop';
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002/api';
     const formattedAddress = type === "delivery" ? `${city}, ${street} ${house}${apt ? ', apt. ' + apt : ''}` : "Самовывоз из Ha-Ne'emanim St 15, Haifa";
     
     let displayName = `${name} (${type === "delivery" ? "Доставка: " + formattedAddress : "Самовывоз"})`;
@@ -192,17 +192,29 @@ export default function CartSheet({ landingSettings }: { landingSettings?: Recor
     }
     const isoDate = dateObj.toISOString();
 
-    const orderData: Record<string, unknown> = {
-      customer_name: displayName,
-      customer_phone: phone || "QR-Menu",
-      total_amount: finalTotal,
+    const orderItems = items.map((item) => ({
+      menuItemId: item.id, 
+      menuItemName: item.name, 
+      quantity: item.quantity, 
+      priceAtTime: item.price
+    }));
+
+    if (type === "delivery") orderItems.push({ menuItemId: "delivery", menuItemName: "Доставка", quantity: 1, priceAtTime: deliveryFee });
+    if (includeBread) orderItems.push({ menuItemId: "bread", menuItemName: "🍞 Хлеб", quantity: 1, priceAtTime: 0 });
+    if (includeCutlery) orderItems.push({ menuItemId: "cutlery", menuItemName: "🍴 Приборы", quantity: 1, priceAtTime: 0 });
+
+    const orderData = {
+      customerName: displayName,
+      customerPhone: phone || "QR-Menu",
+      totalAmount: finalTotal,
       status: "new",
-      payment_method: payment,
-      reservation_date: isoDate,
+      paymentMethod: payment,
+      reservationDate: isoDate,
+      items: orderItems,
     };
 
     try {
-      const orderRes = await fetch(`${pbUrl}/api/collections/orders/records`, {
+      const orderRes = await fetch(`${apiUrl}/orders`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(orderData)
       });
       if (!orderRes.ok) throw new Error(await orderRes.text());
@@ -210,39 +222,11 @@ export default function CartSheet({ landingSettings }: { landingSettings?: Recor
 
       if (order?.id) {
         setOrderId(order.id);
-        const orderItems: Record<string, unknown>[] = items.map((item) => ({
-          order_id: order.id, menu_item_id: item.id, menu_item_name: item.name, quantity: item.quantity, price_at_time: item.price,
-        }));
-
-        if (type === "delivery") orderItems.push({ order_id: order.id, menu_item_name: "Доставка", quantity: 1, price_at_time: deliveryFee });
-        if (includeBread) orderItems.push({ order_id: order.id, menu_item_name: "🍞 Хлеб", quantity: 1, price_at_time: 0 });
-        if (includeCutlery) orderItems.push({ order_id: order.id, menu_item_name: "🍴 Приборы", quantity: 1, price_at_time: 0 });
-
-        for (const i of orderItems) {
-            if (!i.menu_item_id) delete i.menu_item_id;
-            await fetch(`${pbUrl}/api/collections/order_items/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(i) });
-        }
 
         try {
-            const clientQuery = await fetch(`${pbUrl}/api/collections/clients/records?filter=(phone='${encodeURIComponent(phone)}')`);
-            const clientData = clientQuery.ok ? await clientQuery.json() : null;
-            const existingClient = clientData?.items?.[0] || null;
-            const upsertData: Record<string, unknown> = { phone: phone, name: name };
-            if (type === "delivery" && formattedAddress) upsertData.address = formattedAddress;
-            
-            if (existingClient) {
-                await fetch(`${pbUrl}/api/collections/clients/records/${existingClient.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(upsertData) });
-            } else {
-                await fetch(`${pbUrl}/api/collections/clients/records`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(upsertData) });
-            }
+            const upsertData = { phone: phone, name: name, address: type === "delivery" ? formattedAddress : undefined };
+            await fetch(`${apiUrl}/clients`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(upsertData) });
         } catch (clientErr) { console.error(clientErr); }
-
-        // Fixes Logical Bug 4: Call custom endpoint so Telegram Notification has all order_items
-        try {
-          await fetch(`${pbUrl}/api/webhooks/order_submit/${order.id}`, { method: "POST" });
-        } catch (webhookErr) {
-          console.error("Failed to trigger telegram webhook:", webhookErr);
-        }
       }
 
       setSuccess(true);

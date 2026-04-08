@@ -1,8 +1,9 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as menuApi from './menu.api';
 import { MenuItem } from '@rms/types';
 import { pb } from '@rms/db-local';
-import { useEffect } from 'react';
+
 
 export const useCategoriesQuery = () => {
     return useQuery({
@@ -54,16 +55,15 @@ export const useMenuSubscriptions = () => {
     const queryClient = useQueryClient();
     
     useEffect(() => {
-        pb.collection('menu_items').subscribe('*', () => {
+        const eventSource = new EventSource('http://localhost:3002/api/events');
+
+        eventSource.addEventListener('menu-updated', () => {
             queryClient.invalidateQueries({ queryKey: ['menu_items'] });
-        });
-        pb.collection('menu_categories').subscribe('*', () => {
             queryClient.invalidateQueries({ queryKey: ['menu_categories'] });
         });
         
         return () => {
-            pb.collection('menu_items').unsubscribe('*');
-            pb.collection('menu_categories').unsubscribe('*');
+            eventSource.close();
         };
     }, [queryClient]);
 };

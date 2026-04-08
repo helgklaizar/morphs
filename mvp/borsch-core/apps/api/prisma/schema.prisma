@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -70,6 +70,18 @@ model RecipeIngredient {
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
 }
 
+model Client {
+  id              String      @id @default(uuid())
+  phone           String      @unique
+  name            String?
+  totalOrders     Int         @default(0)
+  ltv             Float       @default(0) // Lifetime value
+  lastOrderDate   DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  orders          Order[]
+}
+
 model Order {
   id              String      @id @default(uuid())
   customerName    String
@@ -80,6 +92,10 @@ model Order {
   isArchived      Boolean     @default(false)
   reservationDate String?
   tableId         String?
+  
+  clientId        String?
+  client          Client?     @relation(fields: [clientId], references: [id])
+  
   items           OrderItem[]
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
@@ -94,4 +110,42 @@ model OrderItem {
   priceAtTime  Float
   order        Order    @relation(fields: [orderId], references: [id])
   menuItem     MenuItem @relation(fields: [menuItemId], references: [id])
+}
+
+model Supplier {
+  id              String           @id @default(uuid())
+  name            String
+  phone           String?
+  address         String?
+  workHours       String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  orders          SupplierOrder[]
+}
+
+model SupplierOrder {
+  id              String      @id @default(uuid())
+  supplierId      String
+  status          String      @default("draft") // draft, sent, completed, cancelled
+  totalAmount     Float       @default(0)
+  items           String      // JSON array of bought items/metrics
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  supplier        Supplier    @relation(fields: [supplierId], references: [id])
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String   // Hashed
+  role      String   @default("admin") // admin, cashier
+  createdAt DateTime @default(now())
+}
+
+model InventoryCategory {
+  id         String   @id @default(uuid())
+  name       String
+  orderIndex Int      @default(0)
 }

@@ -4,7 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:up": "docker-compose up -d",
+    "db:push": "npx prisma db push",
+    "db:migrate": "tsx src/migrate.ts"
   },
   "keywords": [],
   "author": "",
@@ -12,11 +17,15 @@
   "type": "commonjs",
   "dependencies": {
     "@hono/node-server": "^1.19.13",
-    "@prisma/client": "^7.7.0",
+    "@prisma/client": "^6.19.3",
     "@types/node": "^25.5.2",
+    "dotenv": "^17.4.1",
     "hono": "^4.12.12",
-    "prisma": "^7.7.0",
+    "prisma": "^6.19.3",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.2"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
   }
 }

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { orderApi } from '../index';
+import { orderApi } from '../../index';
 import { Order, OrderStatus } from '@rms/types';
-import { useToastStore } from '../store/useToastStore';
+import { useToastStore } from '../system/useToastStore';
 
 export const orderKeys = {
   all: ['orders'] as const,
@@ -14,6 +14,19 @@ export const useOrdersQuery = () => {
   return useQuery({
     queryKey: orderKeys.list(),
     queryFn: orderApi.fetchOrders,
+  });
+};
+
+export const useCreateOrderMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: orderApi.createOrder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: orderKeys.list() });
+    },
+    onError: (error: any) => {
+      useToastStore.getState().error("Ошибка создания заказа: " + error.message);
+    }
   });
 };
 

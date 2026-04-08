@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { act } from 'react';
 import { ToastContainer } from '../../components/ui/ToastContainer';
-import { useToastStore } from '../store/useToastStore';
+import { useToastStore } from '../system/useToastStore';
 
 describe('ToastContainer', () => {
   beforeEach(() => {
