@@ -1,51 +1,21 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
 
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-venv_old/
-env.bak/
-venv.bak/
 
-# Project specific
-core/knowledge_graph.kuzu/
-core/knowledge_graph.lancedb/
-core/project.sqlite
-.lancedb/
-.pytest_cache/
-*.db
-*.sqlite3
-*.kuzu
-pytest_output*.txt
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Additional excludes
-node_modules/
-test_logs*.txt
-pytest.log
-pytest_pid.txt
-test_kuzu
-count_ru.py
-.DS_Store
-
-# Agile Artifacts (Local Memory)
-TODO.md
-TASKS_DONE.md
+# Professional Cleanup Patterns
+.agent
+.agents
+.gemini
+.tasks
 GEMINI.md
-docs/history.md
-docs/audit_report_tech_debt.md
-docs/architecture_stateful_planning.md
+TODO.md
+TODO*.md
+arch-audit*.md
+docs/sprints
+.venv
+venv
+__pycache__
+.DS_Store
+node_modules
+coverage/
+dist/
+build/
+configurator/coverage/
