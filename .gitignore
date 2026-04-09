@@ -19,3 +19,10 @@ coverage/
 dist/
 build/
 configurator/coverage/
+
+
+# Professional Cleanup Patterns
+coverage/
+dist/
+build/
+configurator/coverage/
