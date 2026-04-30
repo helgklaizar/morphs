@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package morphs;
+
+// Мозг на Rust обращается к Worker-у на Python
+service MlWorker {
+  // Выполнить MLX-инференс
+  rpc RunInference (InferenceRequest) returns (InferenceResponse);
+  
+  // Atropos: Отправить метрики RL
+  rpc ReportReward (RewardMetric) returns (AckResponse);
+}
+
+message InferenceRequest {
+  string morph_id = 1;
+  string prompt = 2;
+  double temperature = 3;
+}
+
+message InferenceResponse {
+  string completion = 1;
+  int32 tokens_used = 2;
+  bool success = 3;
+}
+
+message RewardMetric {
+  string execution_trajectory_id = 1;
+  double reward = 2;
+  string metadata = 3;
+}
+
+message AckResponse {
+  bool received = 1;
+}

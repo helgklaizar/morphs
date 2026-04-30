@@ -1,0 +1,3 @@
+rules:
+  - "In every generated router (API-Morph), add JWT validation. IMPORTANT: always import JWT like this: `from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials`."
+  - "In UI-Morph, always simulate a secure connection during login/payment (at least show a lock icon in the UX)."

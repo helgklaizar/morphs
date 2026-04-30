@@ -1,0 +1,4 @@
+$141c8fd5-5aec-4d91-8e05-6711cf74e071²‘2vector ÿÿÿÿÿÿÿÿÿ*fixed_size_list:float:38408$	timestamp ÿÿÿÿÿÿÿÿÿ*double08 error ÿÿÿÿÿÿÿÿÿ*string08%
+fixed_code ÿÿÿÿÿÿÿÿÿ*string08 reward ÿÿÿÿÿÿÿÿÿ*int3208"'
+lance.auto_cleanup.older_than14days"!
+lance.auto_cleanup.interval20

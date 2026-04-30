@@ -1,0 +1,12 @@
+# client-config/branding.ts
+# Copy this file to client-config/branding.ts and customize
+
+export const CLIENT_CONFIG = {
+  appName: process.env.APP_NAME || 'RMS AI OS',
+  currency: process.env.APP_CURRENCY || '₪',
+  siteUrl: process.env.SITE_URL || 'https://rms.shop',
+  pbUrl: process.env.NEXT_PUBLIC_PB_URL || 'https://rms.shop',
+  primaryColor: process.env.APP_PRIMARY_COLOR || '#f97316',
+} as const
+
+export type ClientConfig = typeof CLIENT_CONFIG
