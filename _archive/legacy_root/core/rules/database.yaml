@@ -1,4 +1,0 @@
-rules:
-  - "Always use SQLAlchemy for DB generation. No raw SQL in API-Morph."
-  - "Create meaningful columns: id, created_at, updated_at."
-  - "Generate 'engine = create_engine(...)' directly in the router file and call 'Base.metadata.create_all(engine)' immediately."

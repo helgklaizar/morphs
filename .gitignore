@@ -1,28 +1,85 @@
+# Environment
+.env
+.env.*
+!.env.example
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.coverage
+.tox
+.nox
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
 
-# Professional Cleanup Patterns
-.agent
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+.pnpm-debug.log
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+.lancedb/
+test_librarian.db/
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# AI / Antigravity / Agents
+.ai
 .agents
 .gemini
 .tasks
+.codex
 GEMINI.md
 TODO.md
 TODO*.md
 arch-audit*.md
-docs/sprints
-.venv
-venv
-__pycache__
-.DS_Store
-node_modules
-coverage/
-dist/
-build/
-configurator/coverage/
+docs/sprints/
+atropos_memory.json
+*.jsonl
 
-
-# Professional Cleanup Patterns
-coverage/
-dist/
-build/
-configurator/coverage/
+# Archives / Trash
+_archive/
