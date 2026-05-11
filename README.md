@@ -1,12 +1,12 @@
 <a name="readme-top"></a>
 
 <div align="center">
-  <h1 align="center">🧬 Morphs</h1>
+  <h1 align="center">🧬 BOS Agent</h1>
 
   <p align="center">
     <strong>The First Autonomous System That Assembles Itself.</strong>
     <br />
-    An advanced B2B SaaS Business Operating System powered by AI Swarm Orchestration, MCTS-Driven Execution, and fully isolated Sandboxing.
+    An advanced Business OS Agent designed to create AI-powered B2B SaaS applications tailored to business needs. Powered by Swarm Orchestration, MCTS-Driven Execution, and fully isolated Sandboxing.
     <br />
     <br />
     <a href="#-architecture"><strong>Explore the architecture »</strong></a>
@@ -14,9 +14,9 @@
     <br />
     <a href="#-quick-start">Quick Start</a>
     ·
-    <a href="https://github.com/helgklaizar/morphs/issues">Report Bug</a>
+    <a href="https://github.com/helgklaizar/bos-agent/issues">Report Bug</a>
     ·
-    <a href="https://github.com/helgklaizar/morphs/issues">Request Feature</a>
+    <a href="https://github.com/helgklaizar/bos-agent/issues">Request Feature</a>
   </p>
 </div>
 
@@ -49,9 +49,9 @@
 
 ## 🚀 About The Project
 
-**Morphs** is not a chatbot. It is the world's first fully autonomous Business Operating System. 
+**BOS Agent** is not a chatbot. It is the world's first fully autonomous Business Operating System Agent designed for creating AI-powered SaaS tailored to your business needs. 
 
-It operates as an agile engineering swarm—capable of writing, compiling, testing, repairing, and deploying complex B2B SaaS application codebases. By completely eliminating "blind" LLM hallucinations through strict mathematical inference trees (MCTS), isolated sandboxing (YOLO Guard), and semantic RAG memory, Morphs guarantees that the code it generates compiles, runs, and satisfies your business specifications.
+It operates as an agile engineering swarm—capable of writing, compiling, testing, repairing, and deploying complex B2B SaaS application codebases. By completely eliminating "blind" LLM hallucinations through strict mathematical inference trees (MCTS), isolated sandboxing (YOLO Guard), and semantic RAG memory, BOS Agent guarantees that the code it generates compiles, runs, and satisfies your business specifications.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -73,7 +73,7 @@ It operates as an agile engineering swarm—capable of writing, compiling, testi
 
 ## 🏗️ Architecture
 
-Morphs runs on a sophisticated biological mesh architecture, escaping the limitations of linear scripts. 
+BOS Agent runs on a sophisticated biological mesh architecture, escaping the limitations of linear scripts. 
 
 ```mermaid
 graph TD;
@@ -94,7 +94,7 @@ graph TD;
 
 ## 🧩 Component Manifest
 
-A complete breakdown of the Morphs AI engineers and system primitives running inside the Swarm network.
+A complete breakdown of the BOS Agent AI engineers and system primitives running inside the Swarm network.
 
 <details>
 <summary><b>1. System Orchestrators</b></summary>
@@ -151,7 +151,7 @@ A complete breakdown of the Morphs AI engineers and system primitives running in
 ## 🏃 Getting Started
 
 ### Prerequisites
-Morphs operates heavily on local sandboxes. Ensure you possess:
+BOS Agent operates heavily on local sandboxes. Ensure you possess:
 * `python` >= 3.12
 * `docker` and `docker-compose`
 * `bun` & `node` (for UI compilation layers)
@@ -159,8 +159,8 @@ Morphs operates heavily on local sandboxes. Ensure you possess:
 ### Installation
 1. Clone the repository:
    ```sh
-   git clone https://github.com/helgklaizar/morphs.git
-   cd morphs
+   git clone https://github.com/helgklaizar/bos-agent.git
+   cd bos-agent
    ```
 2. Start the fundamental background databases (Redis & Lance):
    ```sh
