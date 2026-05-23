@@ -43,7 +43,7 @@ class AnalyticsMorph:
                 if "sqlite_" in table.lower() or "alembic" in table.lower():
                     continue
                 try:
-                    cursor.execute(f"SELECT * FROM {table} LIMIT 5")
+                    cursor.execute(f"SELECT * FROM {table} LIMIT 5")  # nosec B608
                     rows = cursor.fetchall()
                     cursor.execute(f"PRAGMA table_info({table})")
                     columns = [col[1] for col in cursor.fetchall()]

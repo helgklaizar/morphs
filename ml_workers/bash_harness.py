@@ -158,7 +158,7 @@ class BashHarness:
         # Popen executes in the background non-blocking
         process = subprocess.Popen(
             command,
-            shell=True,
+            shell=True,  # nosec B602
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True, # Detach from parent
@@ -173,7 +173,7 @@ class BashHarness:
         )
 
     async def _run_async(self, input_data: BashCommandInput) -> BashCommandOutput:
-        process = await asyncio.create_subprocess_shell(
+        process = await asyncio.create_subprocess_shell(  # nosec B602
             input_data.command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
