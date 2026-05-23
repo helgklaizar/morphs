@@ -96,3 +96,6 @@ atropos_memory.json
 
 # Archives / Trash
 _archive/
+
+# Python Doctor
+.python-doctor/
