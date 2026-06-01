@@ -4,6 +4,13 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import time
 from core.browser_morph import BrowserMorph
 
+try:
+    from playwright.async_api import async_playwright
+    has_playwright = True
+except ImportError:
+    has_playwright = False
+
+
 HTML_CLEAN = b"""
 <html><body>
     <button onclick="console.log('Button clicked')">Click Me</button>
@@ -38,6 +45,7 @@ def local_test_server():
     server.shutdown()
     thread.join(timeout=2)
 
+@pytest.mark.skipif(not has_playwright, reason="playwright is not installed")
 def test_browser_morph_clean_live(local_test_server):
     import asyncio
     async def run():
@@ -48,6 +56,7 @@ def test_browser_morph_clean_live(local_test_server):
         assert len(res["errors"]) == 0
     asyncio.run(run())
 
+@pytest.mark.skipif(not has_playwright, reason="playwright is not installed")
 def test_browser_morph_crash_live(local_test_server):
     import asyncio
     async def run():

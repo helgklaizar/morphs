@@ -1,5 +1,4 @@
 import glob
-from typing import str
 from ..core.application.ports import ConfigPort
 
 class YAMLConfigAdapter(ConfigPort):

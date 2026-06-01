@@ -1,7 +1,7 @@
 import os
 import sqlite3
 import pytest
-from reactor_morph import ReactorMorph
+from core.reactor_morph import ReactorMorph
 import db
 
 class DummyMind:
@@ -28,8 +28,39 @@ def test_reactor_morph_sql_action(tmp_path):
         def __init__(self):
             self.mind = DummyMind("UPDATE inventory SET count = count - 1 WHERE id = 123")
             
+            # Setup mock ports for Hexagonal Architecture Compatibility
+            from core.core.application.reactor_service import ReactorService
+            from core.core.application.ports import StoragePort, AIPort, ConfigPort
+            from core.core.domain.models import BusinessAction
+            from core.infrastructure.sqlite_adapter import SQLiteAdapter
+            
+            class TestStorage(SQLiteAdapter):
+                async def save_event_log(self, event):
+                    # Bypassing the save_event_log to avoid lacking 'business_events' table
+                    pass
+            
+            class TestAI(AIPort):
+                def __init__(self, mind):
+                    self.mind = mind
+                async def analyze_business_rules(self, event, rules):
+                    resp = self.mind.think("dummy", 1024, 0.1)
+                    clean_resp = resp.replace("<|eot_id|>", "").strip()
+                    if clean_resp == "SKIP":
+                        return BusinessAction(action_type="SKIP")
+                    else:
+                        return BusinessAction(action_type="SQL_MUTATION", command=clean_resp)
+                        
+            class TestConfig(ConfigPort):
+                async def get_business_rules(self):
+                    return "dummy_rules"
+            
+            self.service = ReactorService(
+                ai_engine=TestAI(self.mind),
+                storage=TestStorage(db.DB_PATH),
+                config=TestConfig()
+            )
+            
     agent = TestReactorMorph()
-    
     agent.react("order_placed", '{"item_id": 123}')
     
     assert agent.mind.called
@@ -49,8 +80,38 @@ def test_reactor_morph_skip_action(tmp_path):
         def __init__(self):
             self.mind = DummyMind("SKIP")
             
+            # Setup mock ports for Hexagonal Architecture Compatibility
+            from core.core.application.reactor_service import ReactorService
+            from core.core.application.ports import StoragePort, AIPort, ConfigPort
+            from core.core.domain.models import BusinessAction
+            from core.infrastructure.sqlite_adapter import SQLiteAdapter
+            
+            class TestStorage(SQLiteAdapter):
+                async def save_event_log(self, event):
+                    pass
+            
+            class TestAI(AIPort):
+                def __init__(self, mind):
+                    self.mind = mind
+                async def analyze_business_rules(self, event, rules):
+                    resp = self.mind.think("dummy", 1024, 0.1)
+                    clean_resp = resp.replace("<|eot_id|>", "").strip()
+                    if clean_resp == "SKIP":
+                        return BusinessAction(action_type="SKIP")
+                    else:
+                        return BusinessAction(action_type="SQL_MUTATION", command=clean_resp)
+                        
+            class TestConfig(ConfigPort):
+                async def get_business_rules(self):
+                    return "dummy_rules"
+            
+            self.service = ReactorService(
+                ai_engine=TestAI(self.mind),
+                storage=TestStorage(db.DB_PATH),
+                config=TestConfig()
+            )
+            
     agent = TestReactorMorph()
-    
     agent.react("view_homepage", "{}")
     
     assert agent.mind.called

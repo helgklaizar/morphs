@@ -1,11 +1,11 @@
 import asyncio
 import os
 import json
-from .core.application.reactor_service import ReactorService
-from .core.domain.models import BusinessEvent, EventType
-from .infrastructure.mlx_adapter import MLXAgentAdapter
-from .infrastructure.sqlite_adapter import SQLiteAdapter
-from .infrastructure.config_adapter import YAMLConfigAdapter
+from core.core.application.reactor_service import ReactorService
+from core.core.domain.models import BusinessEvent, EventType
+from core.infrastructure.mlx_adapter import MLXAgentAdapter
+from core.infrastructure.sqlite_adapter import SQLiteAdapter
+from core.infrastructure.config_adapter import YAMLConfigAdapter
 from core.logger import logger
 
 class ReactorMorph:
@@ -41,13 +41,15 @@ class ReactorMorph:
         )
 
         try:
-            # Sync wrapper for now (as the original was synchronous)
-            # In a real async-first system, this would be an 'await'
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                asyncio.create_task(self.service.react(domain_event))
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                loop.create_task(self.service.react(domain_event))
             else:
-                loop.run_until_complete(self.service.react(domain_event))
+                asyncio.run(self.service.react(domain_event))
                 
         except Exception as e:
             logger.error(f"❌ [Reactor-Morph Refactored] Critical error: {e}")
